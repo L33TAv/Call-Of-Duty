@@ -1,14 +1,14 @@
-require('dotenv').config();
+import('dotenv').config();
 
-const express = require("express");
+const express = import("express");
 
-const {MongoClient} = require("mongodb");
+const {MongoClient} = import("mongodb");
 
 const client = new MongoClient(process.env.MONGO_URI);
 
 const app = express();
 
-const pino = require('pino');
+const pino = import('pino');
 const logger = pino();
 
 const PORT = process.env.PORT || 3000;
