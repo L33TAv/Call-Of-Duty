@@ -20,7 +20,7 @@ async function start(){
   await client.connect();
 
   const server = app.listen(PORT, () => {
-    logger.info('Server is running on port ${PORT}');
+    logger.info(`Server is running on port ${PORT}`);
   });
 
   server.on('close', async () => {
