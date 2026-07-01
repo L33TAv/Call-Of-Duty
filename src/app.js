@@ -1,23 +1,22 @@
-import express from 'express';
+import express from "express";
 
-function createApp(client){
+function createApp(client) {
+	const app = express();
 
-  const app = express();
+	app.get("/health", (_req, res) => {
+		res.status(200).json({ status: "ok" });
+	});
 
-  app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok" });
-  });
+	app.get("/health/db", async (_req, res) => {
+		try {
+			await client.db("admin").command({ ping: 1 });
+			res.status(200).json({ status: "ok" });
+		} catch (err) {
+			res.status(500).json({ status: "error", message: `error - : ${err}` });
+		}
+	});
 
-  app.get('/health/db', async (req,res) =>{
-    try{
-      await client.db('admin').command({ping:1});
-      res.status(200).json({status:'ok'});
-    } catch(err){
-      res.status(500).json({status:'error',message:`error - : ${err}`});
-    }
-  });
+	return app;
+}
 
-  return app
-
-} 
 export default createApp;

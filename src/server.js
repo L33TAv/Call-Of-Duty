@@ -1,10 +1,10 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
-import {MongoClient} from "mongodb";
+import { MongoClient } from "mongodb";
 
-import {pino} from 'pino';
+import { pino } from "pino";
 
-import createApp from './app.js';
+import createApp from "./app.js";
 
 dotenv.config();
 
@@ -14,21 +14,19 @@ const PORT = process.env.PORT || 3000;
 
 const logger = pino();
 
-const app = createApp(client)
+const app = createApp(client);
 
-async function start(){
+async function start() {
+	await client.connect();
 
-  await client.connect();
+	const server = app.listen(PORT, () => {
+		logger.info(`Server is running on port ${PORT}`);
+	});
 
-  const server = app.listen(PORT, () => {
-    logger.info(`Server is running on port ${PORT}`);
-  });
-
-  server.on('close', async () => {
-    await client.close();
-    logger.info('server was closed');
-  });
-
+	server.on("close", async () => {
+		await client.close();
+		logger.info("server was closed");
+	});
 }
 
 start();

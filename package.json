@@ -1,26 +1,27 @@
 {
-  "name": "call-of-duty",
-  "version": "1.0.0",
-  "description": "",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "dotenv": "^17.4.2",
-    "express": "^5.0.0",
-    "mongodb": "^7.4.0",
-    "pino": "^10.3.1"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.5.1",
-    "@vitest/coverage-v8": "^4.1.9",
-    "supertest": "^7.2.2",
-    "vitest": "^4.1.9"
-  }
+	"name": "call-of-duty",
+	"version": "1.0.0",
+	"description": "",
+	"type": "module",
+	"main": "index.js",
+	"scripts": {
+		"test": "vitest",
+		"coverage": "vitest run --coverage",
+		"lint": "biome check ."
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"dotenv": "^17.4.2",
+		"express": "^5.0.0",
+		"mongodb": "^7.4.0",
+		"pino": "^10.3.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.1",
+		"@vitest/coverage-v8": "^4.1.9",
+		"supertest": "^7.2.2",
+		"vitest": "^4.1.9"
+	}
 }
