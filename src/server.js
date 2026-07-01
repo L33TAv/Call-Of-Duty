@@ -1,30 +1,18 @@
-import('dotenv').config();
+import dotenv from 'dotenv';
 
-const express = import("express");
+import {MongoClient} from "mongodb";
 
-const {MongoClient} = import("mongodb");
+import {pino} from 'pino';
+
+import app from './app.js';
+
+dotenv.config();
 
 const client = new MongoClient(process.env.MONGO_URI);
 
-const app = express();
-
-const pino = import('pino');
-const logger = pino();
-
 const PORT = process.env.PORT || 3000;
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
-});
-
-app.get('/health/db', async (req,res) =>{
-  try{
-    await client.db('admin').command({ping:1});
-    res.status(200).json({status:'ok'});
-  } catch(err){
-    res.status(500).json({status:'error',message:`error - : ${err}`});
-  }
-});
+const logger = pino();
 
 async function start(){
 
