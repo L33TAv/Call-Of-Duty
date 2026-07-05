@@ -12,7 +12,9 @@ const client = new MongoClient(process.env.MONGO_URI);
 
 const PORT = process.env.PORT || 3000;
 
-const logger = pino();
+const logger = pino({
+	level: process.env.NODE_ENV === 'test' ? 'silent' : (process.env.DEFAULT_PINO_LEVEL || 'info'), 
+});
 
 const app = createApp(client);
 
