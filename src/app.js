@@ -1,4 +1,10 @@
+import config from "./config.js";
+
 import express from "express";
+
+import { pino } from "pino";
+
+const logger = pino(config.logLevel);
 
 function createApp(client) {
 	const app = express();
@@ -12,6 +18,7 @@ function createApp(client) {
 			await client.db("admin").command({ ping: 1 });
 			res.status(200).json({ status: "ok" });
 		} catch (err) {
+			logger.error("error with /health/db get request.")
 			res.status(500).json({ status: "error", message: `error - : ${err}` });
 		}
 	});
