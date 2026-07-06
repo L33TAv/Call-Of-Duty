@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import config from "./config.js";
 
 import { MongoClient } from "mongodb";
 
@@ -6,18 +6,11 @@ import { pino } from "pino";
 
 import createApp from "./app.js";
 
-dotenv.config();
+const client = new MongoClient(config.mongoURI);
 
-const client = new MongoClient(process.env.MONGO_URI);
+const PORT = config.port;
 
-const PORT = process.env.PORT || 3000;
-
-const logger = pino({
-	level:
-		process.env.NODE_ENV === "test"
-			? "silent"
-			: process.env.DEFAULT_PINO_LEVEL || "info",
-});
+const logger = pino(config.logLevel);
 
 const app = createApp(client);
 
