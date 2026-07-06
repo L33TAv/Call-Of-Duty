@@ -3,11 +3,13 @@
 	"version": "1.0.0",
 	"description": "",
 	"type": "module",
-	"main": "index.js",
+	"main": "src/server.js",
 	"scripts": {
 		"test": "vitest",
 		"coverage": "vitest run --coverage",
-		"lint": "biome check ."
+		"lint": "biome check . --fix",
+		"dev": "nodemon src/server.js | pino-pretty",
+		"start": "node src/server.js"
 	},
 	"keywords": [],
 	"author": "",
