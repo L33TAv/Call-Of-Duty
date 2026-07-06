@@ -1,10 +1,7 @@
-import config from "./config.js";
-
 import { MongoClient } from "mongodb";
-
 import { pino } from "pino";
-
 import createApp from "./app.js";
+import config from "./config.js";
 
 const client = new MongoClient(config.mongoURI);
 
