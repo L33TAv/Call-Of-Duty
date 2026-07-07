@@ -38,19 +38,51 @@ const soliderSchema = z.object({
 function createApp(client) {
 	const app = express();
 
+	app.use(express.json());
+
 	app.get("/health", (_req, res) => {
-		res.status(200).json({ status: "ok" });
+		return res.status(200).json({ status: "ok" });
 	});
 
 	app.get("/health/db", async (req, res) => {
 		try {
 			await client.db("admin").command({ ping: 1 });
-			res.status(200).json({ status: "ok" });
+			return res.status(200).json({ status: "ok" });
 		} catch (err) {
 			logger.error(`error with ${req.path} get request.\n`, err);
 			res.status(500).json({ status: "error", message: err.message });
 		}
 	});
+
+	
+	app.post("/soliders",async (req,res) => {
+		try{
+			const validatedSolider = soliderSchema.parse(req.body);
+			
+			if (validatedSolider.limitations){
+				validatedSolider.limitations = validatedSolider.limitations.map(limitation => limitation.toLowerCase());
+			}
+
+			validatedSolider["createdAt"] = new Date(); 
+			validatedSolider["updatedAt"] = new Date(); 
+			
+			await client.connect();
+			const database = await client.db("users");
+			const solidersCollection = await database.collection("soliders");
+
+			solidersCollection.insertOne(validatedSolider);
+
+			return res.status(201).json({message:`solider was added successfully, \n${JSON.stringify(validatedSolider)}`});
+
+		} catch(err){
+
+			if (err instanceof z.ZodError)
+				return res.status(400).json({status:"error",message:`there was a problem with the solider information given \n${err}`});
+			res.status(400).json({status:"error",message:`there was a problem. \n${err}`});
+
+		}
+	})
+
 
 	return app;
 }
