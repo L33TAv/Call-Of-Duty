@@ -72,10 +72,12 @@ function createApp(client) {
 
 			solidersCollection.insertOne(validatedSolider);
 
+			logger.info("post request for /soliders endpoint was successful.");
+
 			return res.status(201).json({message:`solider was added successfully, \n${JSON.stringify(validatedSolider)}`});
 
 		} catch(err){
-
+			logger.error("error with /soliders post request.");
 			if (err instanceof z.ZodError)
 				return res.status(400).json({status:"error",message:`there was a problem with the solider information given \n${err}`});
 			res.status(400).json({status:"error",message:`there was a problem. \n${err}`});
