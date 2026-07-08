@@ -66,11 +66,10 @@ function createApp(client) {
 			validatedSolider["createdAt"] = new Date(); 
 			validatedSolider["updatedAt"] = new Date(); 
 			
-			await client.connect();
 			const database = await client.db("users");
 			const solidersCollection = await database.collection("soliders");
 
-			solidersCollection.insertOne(validatedSolider);
+			await solidersCollection.insertOne(validatedSolider);
 
 			logger.info("post request for /soliders endpoint was successful.");
 
@@ -84,9 +83,6 @@ function createApp(client) {
 
 		}
 	})
-
-
 	return app;
 }
-
 export default createApp;

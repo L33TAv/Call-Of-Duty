@@ -9,10 +9,10 @@ const PORT = config.port;
 
 const logger = pino({level:config.logLevel});
 
-const app = createApp(client);
-
 async function start() {
 	await client.connect();
+
+	const app = createApp(client);
 
 	const server = app.listen(PORT, () => {
 		logger.info(`Server is running on port ${PORT}`);
