@@ -30,7 +30,9 @@ const soliderSchema = z.object({
 		return RANK_NAMES[rankValue] === rankName;
 	else if (rankName !== null && rankName !== undefined)
 		return Object.values(RANK_NAMES).includes(rankName);
-	return true
+	else if (rankValue !== null && rankValue !== undefined)
+		return true;
+	return false;
 },{
 	error:"rankName or rankValue doesn't match the requirements."
 });
