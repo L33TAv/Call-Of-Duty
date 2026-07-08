@@ -7,6 +7,10 @@ import createApp from "../src/app.js";
 const mockClient = {
 	db: () => ({
 		command: async () => ({ ok: 1 }),
+		connect: async () => ({}),
+		collection: async () => ({
+			insertOne: async () => {}
+		}),
 	}),
 };
 
@@ -40,3 +44,38 @@ describe("checks that health endpoints works correctly", () => {
 		expect(badResponse.body.status).toBe("error");
 	});
 });
+
+describe("check if /soliders endpoint works correctly",() =>{
+
+	const scenarios = [
+		{ label: 'should return 400 when name is missing', body: { _id: "1234567", rankName: 'private' }, expectedStatus: 400 },
+		{ label: 'should return 400 when id is missing', body: { name:"Liav",rankName: 'private' }, expectedStatus: 400 },
+		{ label: 'should return 400 when rankValue or rankName is missing', body: { name:"Liav", _id: "1234567" }, expectedStatus: 400 },
+		
+		{ label: 'should return 400 when rankName is invalid', body: { name: 'Liav', rankName: 'Superman',  _id: "1234567"  }, expectedStatus: 400 },
+		{ label: 'should return 400 when rankValue is invalid', body: { _id: "1234567",name: 'Liav', rankValue: '14' }, expectedStatus: 400 },
+		{ label: 'should return 400 when limitations format is invalid', body: {  _id:"1234567",name: 'Liav', rankName: 'private', limitations:[1] }, expectedStatus: 400 },
+		{ label: 'should return 400 when id is invalid', body: {  _id:"1",name: 'Liav', rankName: 'private' }, expectedStatus: 400 },
+		{ label: 'should return 400 when name is invalid', body: { _id:"1234567",name: 'S', rankName: 'private' }, expectedStatus: 400 },
+
+		{ label: 'should return 400 when rankName doesnt match rankValue', body: { _id:"1234567",name: 'S', rankName: 'private', rankValue:3 }, expectedStatus: 400 },
+
+		
+		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: 'Liav', rankName: 'private' }, expectedStatus: 201 },
+		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: 'Liav', rankValue: 1,limitations:["be nice"] }, expectedStatus: 201 },
+		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: 'Liav', rankValue: 0, rankName:"private" }, expectedStatus: 201 },
+  	];
+
+	scenarios.forEach(({label,body,expectedStatus}) =>{
+		it(label,async () =>{
+				
+			const response = await request(app)
+				.post("/soliders")
+				.send(body);
+
+			expect(response.statusCode).toBe(expectedStatus);
+
+		})
+	})
+	
+})
