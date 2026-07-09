@@ -11,10 +11,9 @@ const mockClient = {
 		collection: async () => ({
 			insertOne: async () => {},
 			findOne: async (solider) => {
-				if (solider._id === "notExists")
-					return null;
+				if (solider._id === "notExists") return null;
 				return "exists";
-			}
+			},
 		}),
 	}),
 };
@@ -50,44 +49,96 @@ describe("checks that health endpoints works correctly", () => {
 	});
 });
 
-describe("check if /soliders post endpoint works correctly",() =>{
-
+describe("check if /soliders post endpoint works correctly", () => {
 	const scenarios = [
-		{ label: 'should return 400 when name is missing', body: { _id: "1234567", rankName: 'private' }, expectedStatus: 400 },
-		{ label: 'should return 400 when id is missing', body: { name:"Liav",rankName: 'private' }, expectedStatus: 400 },
-		{ label: 'should return 400 when rankValue or rankName is missing', body: { name:"Liav", _id: "1234567" }, expectedStatus: 400 },
-		
-		{ label: 'should return 400 when rankName is invalid', body: { name: 'Liav', rankName: 'Superman',  _id: "1234567"  }, expectedStatus: 400 },
-		{ label: 'should return 400 when rankValue is invalid', body: { _id: "1234567",name: 'Liav', rankValue: '14' }, expectedStatus: 400 },
-		{ label: 'should return 400 when limitations format is invalid', body: {  _id:"1234567",name: 'Liav', rankName: 'private', limitations:[1] }, expectedStatus: 400 },
-		{ label: 'should return 400 when id is invalid', body: {  _id:"1",name: 'Liav', rankName: 'private' }, expectedStatus: 400 },
-		{ label: 'should return 400 when name is invalid', body: { _id:"1234567",name: 'S', rankName: 'private' }, expectedStatus: 400 },
+		{
+			label: "should return 400 when name is missing",
+			body: { _id: "1234567", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is missing",
+			body: { name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue or rankName is missing",
+			body: { name: "Liav", _id: "1234567" },
+			expectedStatus: 400,
+		},
 
-		{ label: 'should return 400 when rankName doesnt match rankValue', body: { _id:"1234567",name: 'S', rankName: 'private', rankValue:3 }, expectedStatus: 400 },
+		{
+			label: "should return 400 when rankName is invalid",
+			body: { name: "Liav", rankName: "Superman", _id: "1234567" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue is invalid",
+			body: { _id: "1234567", name: "Liav", rankValue: "14" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when limitations format is invalid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankName: "private",
+				limitations: [1],
+			},
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is invalid",
+			body: { _id: "1", name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when name is invalid",
+			body: { _id: "1234567", name: "S", rankName: "private" },
+			expectedStatus: 400,
+		},
 
-		
-		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: "Liav", rankName: 'private' }, expectedStatus: 201 },
-		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: 'Liav', rankValue: 1,limitations:["be nice"] }, expectedStatus: 201 },
-		{ label: 'should return 201 when soldier is valid', body: { _id:"1234567",name: 'Liav', rankValue: 0, rankName:"private" }, expectedStatus: 201 },
-  	];
+		{
+			label: "should return 400 when rankName doesnt match rankValue",
+			body: { _id: "1234567", name: "S", rankName: "private", rankValue: 3 },
+			expectedStatus: 400,
+		},
 
-	scenarios.forEach(({label,body,expectedStatus}) =>{
-		it(label,async () =>{
-				
-			const response = await request(app)
-				.post("/soliders")
-				.send(body);
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankName: "private" },
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankValue: 1,
+				limitations: ["be nice"],
+			},
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankValue: 0, rankName: "private" },
+			expectedStatus: 201,
+		},
+	];
+
+	scenarios.forEach(({ label, body, expectedStatus }) => {
+		it(label, async () => {
+			const response = await request(app).post("/soliders").send(body);
 
 			expect(response.statusCode).toBe(expectedStatus);
-
 		});
 	});
 });
 
-describe("check if /soliders get endpoint works correctly",() =>{
+describe("check if /soliders get endpoint works correctly", () => {
 	it("should return status code 200 when solider was found", async () => {
 		const response = await request(app).get(`/soliders/existingSolider`);
-				
+
 		expect(response.statusCode).toBe(200);
 	});
 
@@ -95,5 +146,4 @@ describe("check if /soliders get endpoint works correctly",() =>{
 		const response = await request(app).get(`/soliders/notExists`);
 		expect(response.statusCode).toBe(404);
 	});
-
-})
+});
