@@ -39,7 +39,7 @@ const soliderSchema = z.object({
 
 function createApp(client) {
 	const app = express();
-
+	
 	app.use(express.json());
 
 	app.get("/health", (_req, res) => {
@@ -85,6 +85,27 @@ function createApp(client) {
 
 		}
 	})
+
+	app.get("/soliders/:id",async (req,res) => {
+		try{
+			const soliderToFind = req.params.id;
+
+
+			const database = await client.db("users");
+			const solidersCollection = await database.collection("soliders");
+
+			const soliderInDB = await solidersCollection.findOne({_id:soliderToFind});
+
+			if (soliderInDB)
+				return res.status(200).json({message:`solider was found ${JSON.stringify(soliderInDB)} `});
+			return res.status(404).json({status:"error",message:"solider was not found."})
+
+		}catch(err){
+			return res.status(404).json({status:"error",message:`there was a problem. \n${err}`})
+		}
+
+	})
+
 	return app;
 }
 export default createApp;
