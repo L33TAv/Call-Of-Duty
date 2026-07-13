@@ -8,14 +8,13 @@
 		"test": "vitest",
 		"coverage": "vitest run --coverage",
 		"lint": "biome check . --fix",
-		"dev": "nodemon src/server.js | pino-pretty",
-		"start": "node src/server.js"
+		"dev": "node --watch --env-file=.env src/server.js | pino-pretty",
+		"start": "node --watch --env-file=.env src/server.js"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"dotenv": "^17.4.2",
 		"express": "^5.0.0",
 		"mongodb": "^7.4.0",
 		"pino": "^10.3.1"
