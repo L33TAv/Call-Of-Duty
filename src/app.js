@@ -51,6 +51,13 @@ const soldierSchema = z
 		},
 	);
 
+const soliderIdSchema = z.object({
+	_id: z
+		.string()
+		.regex(/^\d+$/, { message: "the id must contain only numbers." })
+		.length(7),
+});
+
 function createApp(client) {
 	const app = express();
 
@@ -109,6 +116,8 @@ function createApp(client) {
 		try {
 			const soldierToFind = req.params.id;
 
+			soliderIdSchema.parse({ _id: soldierToFind });
+
 			const soldiersCollection = connectSoldiersCollection(client);
 
 			const soldierInDB = await soldiersCollection.findById(soldierToFind);
@@ -117,10 +126,17 @@ function createApp(client) {
 				return res.status(200).json({
 					message: `soldier was found ${JSON.stringify(soldierInDB)} `,
 				});
+
 			return res
 				.status(404)
 				.json({ status: "error", message: "soldier was not found." });
 		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return res.status(400).json({
+					status: "error",
+					message: `there was a problem. \n${err.message}`,
+				});
+			}
 			return res
 				.status(404)
 				.json({ status: "error", message: `there was a problem. \n${err}` });
