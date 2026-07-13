@@ -11,12 +11,12 @@ function createApp(client) {
 		res.status(200).json({ status: "ok" });
 	});
 
-	app.get("/health/db", async (_req, res) => {
+	app.get("/health/db", async (req, res) => {
 		try {
 			await client.db("admin").command({ ping: 1 });
 			res.status(200).json({ status: "ok" });
 		} catch (err) {
-			logger.error("error with /health/db get request.");
+			logger.error(`error with ${req.path} get request.\n`, err);
 			res.status(500).json({ status: "error", message: `error - : ${err}` });
 		}
 	});
