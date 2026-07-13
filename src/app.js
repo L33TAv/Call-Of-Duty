@@ -17,7 +17,7 @@ function createApp(client) {
 			res.status(200).json({ status: "ok" });
 		} catch (err) {
 			logger.error(`error with ${req.path} get request.\n`, err);
-			res.status(500).json({ status: "error", message: `error - : ${err}` });
+			res.status(500).json({ status: "error", message: err.message });
 		}
 	});
 
