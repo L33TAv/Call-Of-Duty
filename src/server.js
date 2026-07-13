@@ -7,7 +7,7 @@ const client = new MongoClient(config.mongoURI);
 
 const PORT = config.port;
 
-const logger = pino(config.logLevel);
+const logger = pino({level:config.logLevel});
 
 const app = createApp(client);
 

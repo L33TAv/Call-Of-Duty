@@ -2,7 +2,7 @@ import express from "express";
 import { pino } from "pino";
 import config from "./config.js";
 
-const logger = pino(config.logLevel);
+const logger = pino({level:config.logLevel});
 
 function createApp(client) {
 	const app = express();
