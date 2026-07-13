@@ -28,13 +28,13 @@ describe("checks that health endpoints works correctly", () => {
 		expect(response.body).toEqual({ status: "ok" });
 	});
 
-	it("should return status code 200 for /health/db", async () => {
+	it("should return status code 200 for /health/db get route", async () => {
 		const response = await request(app).get("/health/db");
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ status: "ok" });
 	});
 
-	it("should return status code 500 when fails to ping db", async () => {
+	it("should return status code 500 when fails to ping /health/db get route", async () => {
 		const badResponse = await request(badApp).get("/health/db");
 		expect(badResponse.statusCode).toBe(500);
 		expect(badResponse.body.status).toBe("error");
