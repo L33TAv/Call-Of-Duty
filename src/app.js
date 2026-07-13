@@ -1,6 +1,7 @@
 import express from "express";
 import { pino } from "pino";
 import config from "./config.js";
+import connectSoldiersCollection from "./soldiersDB.js";
 
 const logger = pino({level:config.logLevel});
 
@@ -82,10 +83,9 @@ function createApp(client) {
 			validatedSoldier["createdAt"] = new Date();
 			validatedSoldier["updatedAt"] = new Date();
 
-			const database = await client.db("users");
-			const soldiersCollection = await database.collection("soldiers");
+			const soldiersCollection = connectSoldiersCollection(client);
 
-			await soldiersCollection.insertOne(validatedSoldier);
+			await soldiersCollection.insertOne(validatedSoldier); /* --------- */
 
 			logger.info("post request for /soldiers endpoint was successful.");
 
@@ -109,12 +109,9 @@ function createApp(client) {
 		try {
 			const soldierToFind = req.params.id;
 
-			const database = await client.db("users");
-			const soldiersCollection = await database.collection("soldiers");
+			const soldiersCollection = connectSoldiersCollection(client);
 
-			const soldierInDB = await soldiersCollection.findOne({
-				_id: soldierToFind,
-			});
+			const soldierInDB = await soldiersCollection.findById(soldierToFind);
 
 			if (soldierInDB)
 				return res.status(200).json({
@@ -131,7 +128,6 @@ function createApp(client) {
 	});
 
 	return app;
-	
 }
 
 export default createApp;

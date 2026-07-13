@@ -8,7 +8,7 @@ const mockClient = {
 	db: () => ({
 		command: async () => ({ ok: 1 }),
 		connect: async () => ({}),
-		collection: async () => ({
+		collection: () => ({
 			insertOne: async () => {},
 			findOne: async (soldier) => {
 				if (soldier._id === "notExists") return null;
