@@ -10,8 +10,8 @@ const mockClient = {
 		connect: async () => ({}),
 		collection: async () => ({
 			insertOne: async () => {},
-			findOne: async (solider) => {
-				if (solider._id === "notExists") return null;
+			findOne: async (soldier) => {
+				if (soldier._id === "notExists") return null;
 				return "exists";
 			},
 		}),
@@ -49,7 +49,7 @@ describe("checks that health endpoints works correctly", () => {
 	});
 });
 
-describe("check if /soliders post endpoint works correctly", () => {
+describe("check if /soldiers post endpoint works correctly", () => {
 	const scenarios = [
 		{
 			label: "should return 400 when name is missing",
@@ -128,22 +128,22 @@ describe("check if /soliders post endpoint works correctly", () => {
 
 	scenarios.forEach(({ label, body, expectedStatus }) => {
 		it(label, async () => {
-			const response = await request(app).post("/soliders").send(body);
+			const response = await request(app).post("/soldiers").send(body);
 
 			expect(response.statusCode).toBe(expectedStatus);
 		});
 	});
 });
 
-describe("check if /soliders get endpoint works correctly", () => {
-	it("should return status code 200 when solider was found", async () => {
-		const response = await request(app).get(`/soliders/existingSolider`);
+describe("check if /soldiers get endpoint works correctly", () => {
+	it("should return status code 200 when soldier was found", async () => {
+		const response = await request(app).get(`/soldiers/existingSoldier`);
 
 		expect(response.statusCode).toBe(200);
 	});
 
-	it("should return status code 404 when solider was not found", async () => {
-		const response = await request(app).get(`/soliders/notExists`);
+	it("should return status code 404 when soldier was not found", async () => {
+		const response = await request(app).get(`/soldiers/notExists`);
 		expect(response.statusCode).toBe(404);
 	});
 });

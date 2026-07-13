@@ -16,7 +16,7 @@ const RANK_NAMES = {
 	6: "colonel",
 };
 
-const soliderSchema = z
+const soldierSchema = z
 	.object({
 		_id: z
 			.string()
@@ -69,35 +69,35 @@ function createApp(client) {
 		}
 	});
 
-	app.post("/soliders", async (req, res) => {
+	app.post("/soldiers", async (req, res) => {
 		try {
-			const validatedSolider = soliderSchema.parse(req.body);
+			const validatedSoldier = soldierSchema.parse(req.body);
 
-			if (validatedSolider.limitations) {
-				validatedSolider.limitations = validatedSolider.limitations.map(
+			if (validatedSoldier.limitations) {
+				validatedSoldier.limitations = validatedSoldier.limitations.map(
 					(limitation) => limitation.toLowerCase(),
 				);
 			}
 
-			validatedSolider["createdAt"] = new Date();
-			validatedSolider["updatedAt"] = new Date();
+			validatedSoldier["createdAt"] = new Date();
+			validatedSoldier["updatedAt"] = new Date();
 
 			const database = await client.db("users");
-			const solidersCollection = await database.collection("soliders");
+			const soldiersCollection = await database.collection("soldiers");
 
-			await solidersCollection.insertOne(validatedSolider);
+			await soldiersCollection.insertOne(validatedSoldier);
 
-			logger.info("post request for /soliders endpoint was successful.");
+			logger.info("post request for /soldiers endpoint was successful.");
 
 			return res.status(201).json({
-				message: `solider was added successfully, \n${JSON.stringify(validatedSolider)}`,
+				message: `soldier was added successfully, \n${JSON.stringify(validatedSoldier)}`,
 			});
 		} catch (err) {
-			logger.error("error with /soliders post request.");
+			logger.error("error with /soldiers post request.");
 			if (err instanceof z.ZodError)
 				return res.status(400).json({
 					status: "error",
-					message: `there was a problem with the solider information given \n${err}`,
+					message: `there was a problem with the soldier information given \n${err}`,
 				});
 			res
 				.status(400)
@@ -105,24 +105,24 @@ function createApp(client) {
 		}
 	});
 
-	app.get("/soliders/:id", async (req, res) => {
+	app.get("/soldiers/:id", async (req, res) => {
 		try {
-			const soliderToFind = req.params.id;
+			const soldierToFind = req.params.id;
 
 			const database = await client.db("users");
-			const solidersCollection = await database.collection("soliders");
+			const soldiersCollection = await database.collection("soldiers");
 
-			const soliderInDB = await solidersCollection.findOne({
-				_id: soliderToFind,
+			const soldierInDB = await soldiersCollection.findOne({
+				_id: soldierToFind,
 			});
 
-			if (soliderInDB)
+			if (soldierInDB)
 				return res.status(200).json({
-					message: `solider was found ${JSON.stringify(soliderInDB)} `,
+					message: `soldier was found ${JSON.stringify(soldierInDB)} `,
 				});
 			return res
 				.status(404)
-				.json({ status: "error", message: "solider was not found." });
+				.json({ status: "error", message: "soldier was not found." });
 		} catch (err) {
 			return res
 				.status(404)
@@ -131,5 +131,7 @@ function createApp(client) {
 	});
 
 	return app;
+	
 }
+
 export default createApp;
