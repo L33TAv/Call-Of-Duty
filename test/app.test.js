@@ -16,8 +16,8 @@ const mockClient = {
 				return null;
 			},
 			find: () => ({
-				toArray: async () => [{}]
-			})
+				toArray: async () => [{}],
+			}),
 		}),
 	}),
 };
@@ -27,9 +27,9 @@ const mockBrokenClient = {
 		command: async () => {
 			throw new Error("connection lost");
 		},
-		collection: () =>{
+		collection: () => {
 			throw new Error("can't connect to DB");
-		}
+		},
 	}),
 };
 
@@ -57,8 +57,13 @@ describe("checks that health endpoints works correctly", () => {
 });
 
 describe("check if /soldiers post endpoint works correctly", () => {
-	it ("should return 400 when can't connect to db",async () => {
-		const validSoldier =  { _id: "1234567", name: "Liav", rankValue: 0, rankName: "private" };
+	it("should return 400 when can't connect to db", async () => {
+		const validSoldier = {
+			_id: "1234567",
+			name: "Liav",
+			rankValue: 0,
+			rankName: "private",
+		};
 		const response = await request(badApp).post("/soldiers").send(validSoldier);
 
 		expect(response.statusCode).toBe(400);
@@ -150,7 +155,7 @@ describe("check if /soldiers post endpoint works correctly", () => {
 });
 
 describe("check if /soldiers/:id get endpoint works correctly", () => {
-	it ("should return 400 when can't connect to db",async () => {
+	it("should return 400 when can't connect to db", async () => {
 		const response = await request(badApp).get("/soldiers/1234567");
 
 		expect(response.statusCode).toBe(400);
@@ -174,7 +179,7 @@ describe("check if /soldiers/:id get endpoint works correctly", () => {
 });
 
 describe("check if /soldiers/ get endpoint works correctly", () => {
-	it ("should return 400 when can't connect to db",async () => {
+	it("should return 400 when can't connect to db", async () => {
 		const response = await request(badApp).get("/soldiers");
 
 		expect(response.statusCode).toBe(400);

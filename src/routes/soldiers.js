@@ -1,8 +1,8 @@
 import express from "express";
 import { pino } from "pino";
+import * as z from "zod";
 import config from "../config.js";
 import connectSoldiersCollection from "../soldiersDB.js";
-import * as z from "zod";
 
 const logger = pino(config.logLevel);
 
@@ -64,10 +64,10 @@ const soldierGetSchema = z.object({
 	limitations: z.array(z.string()).optional(),
 });
 
-function createSoldierRouter(client){
-    const router =  express.Router();
+function createSoldierRouter(client) {
+	const router = express.Router();
 
-    router.post("/", async (req, res) => {
+	router.post("/", async (req, res) => {
 		try {
 			const validatedSoldier = soldierSchema.parse(req.body);
 
@@ -82,7 +82,7 @@ function createSoldierRouter(client){
 
 			const soldiersCollection = connectSoldiersCollection(client);
 
-			await soldiersCollection.insertOne(validatedSoldier); 
+			await soldiersCollection.insertOne(validatedSoldier);
 
 			logger.info("post request for /soldiers endpoint was successful.");
 
@@ -134,31 +134,37 @@ function createSoldierRouter(client){
 	});
 
 	router.get("/", async (req, res) => {
-		try{
-			let {name, rankValue,rankName,limitations,...rest} = req.query;
+		try {
+			let { name, rankValue, rankName, limitations, ...rest } = req.query;
 
-            if (limitations){
+			if (limitations) {
 				limitations = limitations.split(",");
-            }
+			}
 
-            if (Object.keys(rest).length > 0 ){
-                return res.status(400).json({
+			if (Object.keys(rest).length > 0) {
+				return res.status(400).json({
 					status: "error",
 					message: `unknown parameters were given - ${Object.keys(rest).join(", ")}`,
 				});
-            }
+			}
 
-            const validatedSearch  = soldierGetSchema.parse({name, rankValue, rankName, limitations});
+			const validatedSearch = soldierGetSchema.parse({
+				name,
+				rankValue,
+				rankName,
+				limitations,
+			});
 
 			const filter = Object.fromEntries(
-				Object.entries(validatedSearch).filter(([key, value]) => value !== undefined && value !== null)
-				);
+				Object.entries(validatedSearch).filter(
+					([key, value]) => value !== undefined && value !== null,
+				),
+			);
 			const soldierCollection = connectSoldiersCollection(client);
 			const soldiersFound = await soldierCollection.find(filter);
-			
-			return res.status(200).json(soldiersFound);
 
-		}catch(err){
+			return res.status(200).json(soldiersFound);
+		} catch (err) {
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
@@ -169,10 +175,9 @@ function createSoldierRouter(client){
 				.status(400)
 				.json({ status: "error", message: `there was a problem. \n${err}` });
 		}
-			
-		});
+	});
 
-    return router;
-};
+	return router;
+}
 
 export default createSoldierRouter;

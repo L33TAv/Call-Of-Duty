@@ -1,8 +1,8 @@
 import express from "express";
 import { pino } from "pino";
 import config from "./config.js";
-import connectSoldiersCollection from "./soldiersDB.js";
 import createSoldierRouter from "./routes/soldiers.js";
+import connectSoldiersCollection from "./soldiersDB.js";
 
 const logger = pino({level:config.logLevel});
 
@@ -12,7 +12,7 @@ function createApp(client) {
 
 	app.use(express.json());
 
-	app.use("/soldiers",soliderRoute);
+	app.use("/soldiers", soliderRoute);
 
 	app.get("/health", (_req, res) => {
 		return res.status(200).json({ status: "ok" });
