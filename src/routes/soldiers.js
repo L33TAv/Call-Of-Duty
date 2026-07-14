@@ -177,6 +177,34 @@ function createSoldierRouter(client) {
 		}
 	});
 
+	router.delete("/:id", async (req, res) => {
+		try {
+			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+
+			const soldierCollection = connectSoldiersCollection(client);
+
+			const deleteResponse =
+				await soldierCollection.deleteById(validatedSoldierId);
+
+			if (!deleteResponse.deletedCount)
+				return res
+					.status(404)
+					.json({ status: "error", message: "soldier wasn't found" });
+
+			return res.sendStatus(204);
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				return res.status(400).json({
+					status: "error",
+					message: `there was a validation problem. \n${err.message}`,
+				});
+			}
+			return res
+				.status(400)
+				.json({ status: "error", message: `there was a problem. \n${err}` });
+		}
+	});
+
 	return router;
 }
 
