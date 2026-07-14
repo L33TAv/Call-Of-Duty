@@ -4,8 +4,6 @@ import config from "../config.js";
 import connectSoldiersCollection from "../soldiersDB.js";
 import * as z from "zod";
 
-const router =  express.Router();
-
 const logger = pino(config.logLevel);
 
 const RANK_NAMES = {
@@ -67,6 +65,8 @@ const soldierGetSchema = z.object({
 });
 
 function createSoldierRouter(client){
+    const router =  express.Router();
+
     router.post("/", async (req, res) => {
 		try {
 			const validatedSoldier = soldierSchema.parse(req.body);
@@ -82,7 +82,7 @@ function createSoldierRouter(client){
 
 			const soldiersCollection = connectSoldiersCollection(client);
 
-			await soldiersCollection.insertOne(validatedSoldier); /* --------- */
+			await soldiersCollection.insertOne(validatedSoldier); 
 
 			logger.info("post request for /soldiers endpoint was successful.");
 
@@ -128,7 +128,7 @@ function createSoldierRouter(client){
 				});
 			}
 			return res
-				.status(404)
+				.status(400)
 				.json({ status: "error", message: `there was a problem. \n${err}` });
 		}
 	});

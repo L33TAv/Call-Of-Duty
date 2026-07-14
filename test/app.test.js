@@ -3,6 +3,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 
 import createApp from "../src/app.js";
+import connectSoldiersCollection from "../src/soldiersDB.js";
 
 const mockClient = {
 	db: () => ({
@@ -23,6 +24,9 @@ const mockBrokenClient = {
 		command: async () => {
 			throw new Error("connection lost");
 		},
+		collection: () =>{
+			throw new Error("can't connect to DB");
+		}
 	}),
 };
 
@@ -50,6 +54,13 @@ describe("checks that health endpoints works correctly", () => {
 });
 
 describe("check if /soldiers post endpoint works correctly", () => {
+	it ("should return 400 when can't connect to db",async () => {
+		const validSoldier =  { _id: "1234567", name: "Liav", rankValue: 0, rankName: "private" };
+		const response = await request(badApp).post("/soldiers").send(validSoldier);
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	const scenarios = [
 		{
 			label: "should return 400 when name is missing",
@@ -136,6 +147,12 @@ describe("check if /soldiers post endpoint works correctly", () => {
 });
 
 describe("check if /soldiers get endpoint works correctly", () => {
+	it ("should return 400 when can't connect to db",async () => {
+		const response = await request(badApp).get("/soldiers/1234567");
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	it("should return status code 200 when soldier was found", async () => {
 		const response = await request(app).get(`/soldiers/1234567`);
 
