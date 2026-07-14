@@ -146,7 +146,7 @@ describe("check if /soldiers post endpoint works correctly", () => {
 	});
 });
 
-describe("check if /soldiers get endpoint works correctly", () => {
+describe("check if /soldiers/:id get endpoint works correctly", () => {
 	it ("should return 400 when can't connect to db",async () => {
 		const response = await request(badApp).get("/soldiers/1234567");
 
