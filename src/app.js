@@ -51,11 +51,18 @@ const soldierSchema = z
 		},
 	);
 
-const soliderIdSchema = z.object({
+const soldierIdSchema = z.object({
 	_id: z
 		.string()
 		.regex(/^\d+$/, { message: "the id must contain only numbers." })
 		.length(7),
+});
+
+const soldierGetSchema = z.object({
+	name: z.string().min(3).max(50).optional(),
+	rankValue: z.coerce.number().gte(0).lte(6).optional(),
+	rankName: z.string().optional(),
+	limitations: z.array(z.string()).optional(),
 });
 
 function createApp(client) {
@@ -116,7 +123,7 @@ function createApp(client) {
 		try {
 			const soldierToFind = req.params.id;
 
-			soliderIdSchema.parse({ _id: soldierToFind });
+			soldierIdSchema.parse({ _id: soldierToFind });
 
 			const soldiersCollection = connectSoldiersCollection(client);
 
@@ -142,6 +149,36 @@ function createApp(client) {
 				.json({ status: "error", message: `there was a problem. \n${err}` });
 		}
 	});
+
+	app.get("/soldiers", async (req, res) => {
+		try{
+			const {name, rankValue,rankName,limitation} = req.query;
+			if (limitation)
+				limitations = limitations.split(",");
+
+			const validatedSearch  = soldierGetSchema.parse({name, rankValue, rankName, limitation});
+
+			const filter = Object.fromEntries(
+				Object.entries(validatedSearch).filter(([key, value]) => value !== undefined && value !== null)
+				);
+			const soldierCollection = connectSoldiersCollection(client);
+			const soldiersFound = await soldierCollection.find(filter);
+			
+			return res.status(200).json(soldiersFound);
+
+		}catch(err){
+			if (err instanceof z.ZodError) {
+				return res.status(400).json({
+					status: "error",
+					message: `there was a problem. \n${err.message}`,
+				});
+			}
+			return res
+				.status(404)
+				.json({ status: "error", message: `there was a problem. \n${err}` });
+		}
+			
+		})
 
 	return app;
 }

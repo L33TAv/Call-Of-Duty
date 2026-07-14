@@ -9,7 +9,7 @@ export default function connectSoldiersCollection(mongoClient) {
 			return collection.findOne({ _id: id });
 		},
 		async find(limitation = {}) {
-			return collection.find(limitation);
+			return collection.find(limitation).toArray();
 		},
 	};
 }
