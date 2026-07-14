@@ -8,11 +8,11 @@ const logger = pino({level:config.logLevel});
 
 function createApp(client) {
 	const app = express();
-	const soliderRoute = createSoldierRouter(client);
+	const soldierRoute = createSoldierRouter(client);
 
 	app.use(express.json());
 
-	app.use("/soldiers", soliderRoute);
+	app.use("/soldiers", soldierRoute);
 
 	app.get("/health", (_req, res) => {
 		return res.status(200).json({ status: "ok" });
