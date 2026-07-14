@@ -15,6 +15,9 @@ const mockClient = {
 				if (soldier._id === "1234567") return "exists";
 				return null;
 			},
+			find: () => ({
+				toArray: async () => [{}]
+			})
 		}),
 	}),
 };
@@ -167,5 +170,41 @@ describe("check if /soldiers/:id get endpoint works correctly", () => {
 	it("should return status code 404 when soldier was not found", async () => {
 		const response = await request(app).get(`/soldiers/1111111`);
 		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe("check if /soldiers/ get endpoint works correctly", () => {
+	it ("should return 400 when can't connect to db",async () => {
+		const response = await request(badApp).get("/soldiers");
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - name length", async () => {
+		const response = await request(app).get(`/soldiers?name=a`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - rankValue isn't a number", async () => {
+		const response = await request(app).get(`/soldiers?rankValue=a`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - property doesn't exist", async () => {
+		const response = await request(app).get(`/soldiers?randomProperty=abc`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 200 when soldier is valid", async () => {
+		const response = await request(app).get(`/soldiers?name=sam`);
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 200 when no soldier attributes are given", async () => {
+		const response = await request(app).get(`/soldiers?name=sam`);
+		expect(response.statusCode).toBe(200);
 	});
 });
