@@ -135,11 +135,14 @@ function createSoldierRouter(client){
 
 	router.get("/", async (req, res) => {
 		try{
-			const {name, rankValue,rankName,limitation} = req.query;
-			if (limitation)
-				limitations = limitations.split(",");
+			const {name, rankValue,rankName} = req.query;
+            let limitations = req.query.limitations;
 
-			const validatedSearch  = soldierGetSchema.parse({name, rankValue, rankName, limitation});
+            if (limitations){
+				limitations = limitations.split(",");
+            }
+            
+            const validatedSearch  = soldierGetSchema.parse({name, rankValue, rankName, limitations});
 
 			const filter = Object.fromEntries(
 				Object.entries(validatedSearch).filter(([key, value]) => value !== undefined && value !== null)
