@@ -205,6 +205,39 @@ function createSoldierRouter(client) {
 		}
 	});
 
+	router.patch("/:id", async (req,res) => {
+		try{
+			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+
+			const validatedSoldier = soldierSchema.parse(req.body);
+			
+			if (validatedSoldier._id !== validatedSoldierId._id)
+				return res.status(400).json({status:"error",message:"the 'id' field is immutable and cannot be modified."})
+
+			validatedSoldier.updatedAt = new Date();
+
+			const soldierCollection = connectSoldiersCollection(client);
+
+			const patchResponse = await soldierCollection.updateById(validatedSoldierId,validatedSoldier);
+
+			if (!(patchResponse.modifiedCount === 1))
+				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
+
+			res.status(200).json({message:`new Solider:${JSON.stringify(validatedSoldier)}`})
+
+		}catch(err){
+			if (err instanceof z.ZodError) {
+				return res.status(400).json({
+					status: "error",
+					message: `there was a validation problem. \n${err.message}`,
+				});
+			}
+			return res
+				.status(400)
+				.json({ status: "error", message: `there was a problem. \n${err}` });
+		}
+	});
+
 	return router;
 }
 

@@ -14,5 +14,8 @@ export default function connectSoldiersCollection(mongoClient) {
 		async deleteById(idObject) {
 			return collection.deleteOne(idObject);
 		},
+		async updateById(idObject,newSoldier){
+			return collection.replaceOne(idObject,newSoldier);
+		}
 	};
 }
