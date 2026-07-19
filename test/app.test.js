@@ -25,7 +25,12 @@ const mockClient = {
 			replaceOne: async (object) => {
 				if (object._id === "0000000") return { modifiedCount: 0 };
 				return { modifiedCount: 1 };
+			},
+			updateOne: async (object) =>{ 
+				if (object._id === "0000000") return { modifiedCount: 0 };
+				return { modifiedCount: 1 };
 			} 
+			
 		}),
 	}),
 };
@@ -277,4 +282,41 @@ describe("check if /soldiers/ patch endpoint works correctly", () => {
 	});
 });
 
+
+
+describe("check if /soldiers/ patch endpoint works correctly", () => {
+	const limitations = {limitations:["food","money"]}
+	const badLimitations = {limitations:[1,"money"]}
+
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).patch("/soldiers/1234567/limitations").send(limitations);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the limitations aren't valid - using numbers", async () => {
+		const response = await request(app).patch(`/soldiers/1234567/limitations`).send(badLimitations);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the limitations aren't valid - empty object", async () => {
+		const response = await request(app).patch(`/soldiers/1234567/limitations`).send({});
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider id isn't valid", async () => {
+		const response = await request(app).patch(`/soldiers/1/limitations`).send(limitations);
+		
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app).patch(`/soldiers/0000000/limitations`).send(limitations);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 200 when the solider was patched", async () => {
+		const response = await request(app).patch(`/soldiers/1234567/limitations`).send(limitations);
+		expect(response.statusCode).toBe(200);
+	});
+});
 
