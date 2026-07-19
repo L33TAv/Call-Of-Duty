@@ -217,7 +217,7 @@ describe("check if /soldiers/ get endpoint works correctly", () => {
 	});
 });
 
-describe("check if /soldiers/ delete endpoint works correctly", () => {
+describe("check if /soldiers/:id delete endpoint works correctly", () => {
 	it("should return 400 when can't connect to db", async () => {
 		const response = await request(badApp).delete("/soldiers/1");
 		expect(response.statusCode).toBe(400);
@@ -238,3 +238,5 @@ describe("check if /soldiers/ delete endpoint works correctly", () => {
 		expect(response.statusCode).toBe(204);
 	});
 });
+
+
