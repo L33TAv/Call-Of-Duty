@@ -18,6 +18,10 @@ const mockClient = {
 			find: () => ({
 				toArray: async () => [{}],
 			}),
+			deleteOne: (object) => {
+				if (object._id === "0000000") return { deletedCount: 1 };
+				return { deletedCount: 0 };
+			},
 		}),
 	}),
 };
@@ -181,7 +185,6 @@ describe("check if /soldiers/:id get endpoint works correctly", () => {
 describe("check if /soldiers/ get endpoint works correctly", () => {
 	it("should return 400 when can't connect to db", async () => {
 		const response = await request(badApp).get("/soldiers");
-
 		expect(response.statusCode).toBe(400);
 	});
 
@@ -211,5 +214,27 @@ describe("check if /soldiers/ get endpoint works correctly", () => {
 	it("should return status code 200 when no soldier attributes are given", async () => {
 		const response = await request(app).get(`/soldiers?name=sam`);
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe("check if /soldiers/ delete endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).delete("/soldiers/1");
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider parameters aren't valid", async () => {
+		const response = await request(app).delete(`/soldiers/1`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app).delete(`/soldiers/1234567`);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 204 when the solider was deleted", async () => {
+		const response = await request(app).delete(`/soldiers/0000000`);
+		expect(response.statusCode).toBe(204);
 	});
 });
