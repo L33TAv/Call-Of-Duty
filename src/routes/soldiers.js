@@ -64,6 +64,10 @@ const soldierGetSchema = z.object({
 	limitations: z.array(z.string()).optional(),
 });
 
+const soldierLimitationSchema = z.object({
+	limitations: z.array(z.string())
+}).strict();
+
 function createSoldierRouter(client) {
 	const router = express.Router();
 
@@ -224,6 +228,34 @@ function createSoldierRouter(client) {
 				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
 
 			res.status(200).json({message:`new Solider:${JSON.stringify(validatedSoldier)}`})
+
+		}catch(err){
+			if (err instanceof z.ZodError) {
+				return res.status(400).json({
+					status: "error",
+					message: `there was a validation problem. \n${err.message}`,
+				});
+			}
+			return res
+				.status(400)
+				.json({ status: "error", message: `there was a problem. \n${err}` });
+		}
+	});
+
+	router.patch("/:id/limitations", async (req,res) => {
+		try{
+			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+			let newLimitations = soldierLimitationSchema.parse(req.body);
+			const updatedAt = new Date();
+
+			const soldierCollection = connectSoldiersCollection(client);
+
+			const patchResponse = await soldierCollection.updateLimitationsById(validatedSoldierId,newLimitations,updatedAt); 
+
+			if (!(patchResponse.modifiedCount === 1))
+				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
+
+			res.status(200).json({message:`new limitations:${JSON.stringify(newLimitations.limitations)}`})
 
 		}catch(err){
 			if (err instanceof z.ZodError) {

@@ -16,6 +16,15 @@ export default function connectSoldiersCollection(mongoClient) {
 		},
 		async updateById(idObject,newSoldier){
 			return collection.replaceOne(idObject,newSoldier);
+		},
+		async updateLimitationsById(idObject,limitations,updatedAt){
+			return collection.updateOne(
+				idObject,
+				{
+					$addToSet : {limitations:{$each:limitations.limitations}},
+					$set: {updatedAt:updatedAt}
+				}
+			);
 		}
 	};
 }
