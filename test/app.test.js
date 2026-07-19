@@ -18,7 +18,7 @@ const mockClient = {
 			find: () => ({
 				toArray: async () => [{}],
 			}),
-			deleteOne: (object) => {
+			deleteOne: async (object) => {
 				if (object._id === "0000000") return { deletedCount: 1 };
 				return { deletedCount: 0 };
 			},
