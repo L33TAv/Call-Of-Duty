@@ -22,6 +22,10 @@ const mockClient = {
 				if (object._id === "0000000") return { deletedCount: 1 };
 				return { deletedCount: 0 };
 			},
+			replaceOne: async (object) => {
+				if (object._id === "0000000") return { modifiedCount: 0 };
+				return { modifiedCount: 1 };
+			} 
 		}),
 	}),
 };
@@ -238,3 +242,39 @@ describe("check if /soldiers/:id delete endpoint works correctly", () => {
 		expect(response.statusCode).toBe(204);
 	});
 });
+
+
+describe("check if /soldiers/ patch endpoint works correctly", () => {
+	const soldier = {_id:"1234567",name:"sam",rankName:"private",rankValue:0}
+	const soldierChangeId = {_id:"1111111",name:"sam",rankName:"private",rankValue:0}
+	const unknownSoldier = {_id:"0000000",name:"sam",rankName:"private",rankValue:0}
+
+
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).patch("/soldiers/1234567").send(soldier);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider parameters aren't valid", async () => {
+		const response = await request(app).patch(`/soldiers/1`).send(soldier);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider id can't be changed", async () => {
+		const response = await request(app).patch(`/soldiers/1234567`).send(soldierChangeId);
+		
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app).patch(`/soldiers/0000000`).send(unknownSoldier);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 200 when the solider was patched", async () => {
+		const response = await request(app).patch(`/soldiers/1234567`).send(soldier);
+		expect(response.statusCode).toBe(200);
+	});
+});
+
+
