@@ -88,13 +88,13 @@ function createSoldierRouter(client) {
 
 			await soldiersCollection.insertOne(validatedSoldier);
 
-			logger.info("post request for /soldiers endpoint was successful.");
+			logger.info(`request for ${req.path} post endpoint was successful.`);
 
 			return res.status(201).json({
 				message: `soldier was added successfully, \n${JSON.stringify(validatedSoldier)}`,
 			});
 		} catch (err) {
-			logger.error("error with /soldiers post request.");
+			logger.error(`error with ${req.path} post request.\n`, err);
 			if (err instanceof z.ZodError)
 				return res.status(400).json({
 					status: "error",
@@ -116,15 +116,17 @@ function createSoldierRouter(client) {
 
 			const soldierInDB = await soldiersCollection.findById(soldierToFind);
 
-			if (soldierInDB)
+			if (soldierInDB){
+				logger.info(`request for ${req.path} get endpoint was successful.`);
 				return res.status(200).json({
 					message: `soldier was found ${JSON.stringify(soldierInDB)} `,
-				});
+				});}
 
 			return res
 				.status(404)
 				.json({ status: "error", message: "soldier was not found." });
 		} catch (err) {
+			logger.error(`error with ${req.path} get request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
@@ -167,8 +169,11 @@ function createSoldierRouter(client) {
 			const soldierCollection = connectSoldiersCollection(client);
 			const soldiersFound = await soldierCollection.find(filter);
 
+			logger.info(`request for ${req.path} get endpoint was successful.`);
+
 			return res.status(200).json(soldiersFound);
 		} catch (err) {
+			logger.error(`error with ${req.path} get request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
@@ -195,8 +200,11 @@ function createSoldierRouter(client) {
 					.status(404)
 					.json({ status: "error", message: "soldier wasn't found" });
 
+			logger.info(`request for ${req.path} delete endpoint was successful.`);
+
 			return res.sendStatus(204);
 		} catch (err) {
+			logger.error(`error with ${req.path} delete request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
@@ -227,9 +235,12 @@ function createSoldierRouter(client) {
 			if (!(patchResponse.modifiedCount === 1))
 				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
 
+			logger.info(`request for ${req.path} patch endpoint was successful.`);
+
 			res.status(200).json({message:`new Solider:${JSON.stringify(validatedSoldier)}`})
 
 		}catch(err){
+			logger.error(`error with ${req.path} patch request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
@@ -254,10 +265,13 @@ function createSoldierRouter(client) {
 
 			if (!(patchResponse.modifiedCount === 1))
 				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
+			
+			logger.info(`request for ${req.path} patch endpoint was successful.`);
 
 			res.status(200).json({message:`new limitations:${JSON.stringify(newLimitations.limitations)}`})
 
 		}catch(err){
+			logger.error(`error with ${req.path} patch request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
 					status: "error",
