@@ -4,7 +4,7 @@ import config from "./config.js";
 import createSoldierRouter from "./routes/soldiers.js";
 import connectSoldiersCollection from "./soldiersDB.js";
 
-const logger = pino({level:config.logLevel});
+const logger = pino({ level: config.logLevel });
 
 function createApp(client) {
 	const app = express();

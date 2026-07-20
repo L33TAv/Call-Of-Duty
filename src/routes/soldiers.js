@@ -64,9 +64,11 @@ const soldierGetSchema = z.object({
 	limitations: z.array(z.string()).optional(),
 });
 
-const soldierLimitationSchema = z.object({
-	limitations: z.array(z.string())
-}).strict();
+const soldierLimitationSchema = z
+	.object({
+		limitations: z.array(z.string()),
+	})
+	.strict();
 
 function createSoldierRouter(client) {
 	const router = express.Router();
@@ -116,11 +118,12 @@ function createSoldierRouter(client) {
 
 			const soldierInDB = await soldiersCollection.findById(soldierToFind);
 
-			if (soldierInDB){
+			if (soldierInDB) {
 				logger.info(`request for ${req.path} get endpoint was successful.`);
 				return res.status(200).json({
 					message: `soldier was found ${JSON.stringify(soldierInDB)} `,
-				});}
+				});
+			}
 
 			return res
 				.status(404)
@@ -217,29 +220,39 @@ function createSoldierRouter(client) {
 		}
 	});
 
-	router.patch("/:id", async (req,res) => {
-		try{
+	router.patch("/:id", async (req, res) => {
+		try {
 			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 
 			const validatedSoldier = soldierSchema.parse(req.body);
-			
+
 			if (validatedSoldier._id !== validatedSoldierId._id)
-				return res.status(400).json({status:"error",message:"the 'id' field is immutable and cannot be modified."})
+				return res.status(400).json({
+					status: "error",
+					message: "the 'id' field is immutable and cannot be modified.",
+				});
 
 			validatedSoldier.updatedAt = new Date();
 
 			const soldierCollection = connectSoldiersCollection(client);
 
-			const patchResponse = await soldierCollection.updateById(validatedSoldierId,validatedSoldier);
+			const patchResponse = await soldierCollection.updateById(
+				validatedSoldierId,
+				validatedSoldier,
+			);
 
 			if (!(patchResponse.modifiedCount === 1))
-				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
+				return res.status(404).json({
+					status: "error",
+					message: "solider wasn't found or couldn't be changed",
+				});
 
 			logger.info(`request for ${req.path} patch endpoint was successful.`);
 
-			res.status(200).json({message:`new Solider:${JSON.stringify(validatedSoldier)}`})
-
-		}catch(err){
+			res
+				.status(200)
+				.json({ message: `new Solider:${JSON.stringify(validatedSoldier)}` });
+		} catch (err) {
 			logger.error(`error with ${req.path} patch request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({
@@ -253,24 +266,32 @@ function createSoldierRouter(client) {
 		}
 	});
 
-	router.patch("/:id/limitations", async (req,res) => {
-		try{
+	router.patch("/:id/limitations", async (req, res) => {
+		try {
 			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
-			let newLimitations = soldierLimitationSchema.parse(req.body);
+			const newLimitations = soldierLimitationSchema.parse(req.body);
 			const updatedAt = new Date();
 
 			const soldierCollection = connectSoldiersCollection(client);
 
-			const patchResponse = await soldierCollection.updateLimitationsById(validatedSoldierId,newLimitations,updatedAt); 
+			const patchResponse = await soldierCollection.updateLimitationsById(
+				validatedSoldierId,
+				newLimitations,
+				updatedAt,
+			);
 
 			if (!(patchResponse.modifiedCount === 1))
-				return res.status(404).json({status:"error",message:"solider wasn't found or couldn't be changed"})
-			
+				return res.status(404).json({
+					status: "error",
+					message: "solider wasn't found or couldn't be changed",
+				});
+
 			logger.info(`request for ${req.path} patch endpoint was successful.`);
 
-			res.status(200).json({message:`new limitations:${JSON.stringify(newLimitations.limitations)}`})
-
-		}catch(err){
+			res.status(200).json({
+				message: `new limitations:${JSON.stringify(newLimitations.limitations)}`,
+			});
+		} catch (err) {
 			logger.error(`error with ${req.path} patch request.\n`, err);
 			if (err instanceof z.ZodError) {
 				return res.status(400).json({

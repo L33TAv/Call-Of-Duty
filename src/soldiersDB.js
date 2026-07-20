@@ -14,17 +14,14 @@ export default function connectSoldiersCollection(mongoClient) {
 		async deleteById(idObject) {
 			return collection.deleteOne(idObject);
 		},
-		async updateById(idObject,newSoldier){
-			return collection.replaceOne(idObject,newSoldier);
+		async updateById(idObject, newSoldier) {
+			return collection.replaceOne(idObject, newSoldier);
 		},
-		async updateLimitationsById(idObject,limitations,updatedAt){
-			return collection.updateOne(
-				idObject,
-				{
-					$addToSet : {limitations:{$each:limitations.limitations}},
-					$set: {updatedAt:updatedAt}
-				}
-			);
-		}
+		async updateLimitationsById(idObject, limitations, updatedAt) {
+			return collection.updateOne(idObject, {
+				$addToSet: { limitations: { $each: limitations.limitations } },
+				$set: { updatedAt: updatedAt },
+			});
+		},
 	};
 }

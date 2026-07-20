@@ -26,11 +26,10 @@ const mockClient = {
 				if (object._id === "0000000") return { modifiedCount: 0 };
 				return { modifiedCount: 1 };
 			},
-			updateOne: async (object) =>{ 
+			updateOne: async (object) => {
 				if (object._id === "0000000") return { modifiedCount: 0 };
 				return { modifiedCount: 1 };
-			} 
-			
+			},
 		}),
 	}),
 };
@@ -248,15 +247,30 @@ describe("check if /soldiers/:id delete endpoint works correctly", () => {
 	});
 });
 
-
 describe("check if /soldiers/ patch endpoint works correctly", () => {
-	const soldier = {_id:"1234567",name:"sam",rankName:"private",rankValue:0}
-	const soldierChangeId = {_id:"1111111",name:"sam",rankName:"private",rankValue:0}
-	const unknownSoldier = {_id:"0000000",name:"sam",rankName:"private",rankValue:0}
-
+	const soldier = {
+		_id: "1234567",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+	const soldierChangeId = {
+		_id: "1111111",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+	const unknownSoldier = {
+		_id: "0000000",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
 
 	it("should return 400 when can't connect to db", async () => {
-		const response = await request(badApp).patch("/soldiers/1234567").send(soldier);
+		const response = await request(badApp)
+			.patch("/soldiers/1234567")
+			.send(soldier);
 		expect(response.statusCode).toBe(400);
 	});
 
@@ -266,57 +280,72 @@ describe("check if /soldiers/ patch endpoint works correctly", () => {
 	});
 
 	it("should return status code 400 when the solider id can't be changed", async () => {
-		const response = await request(app).patch(`/soldiers/1234567`).send(soldierChangeId);
-		
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldierChangeId);
+
 		expect(response.statusCode).toBe(400);
 	});
 
 	it("should return status code 404 when the solider wasn't found", async () => {
-		const response = await request(app).patch(`/soldiers/0000000`).send(unknownSoldier);
+		const response = await request(app)
+			.patch(`/soldiers/0000000`)
+			.send(unknownSoldier);
 		expect(response.statusCode).toBe(404);
 	});
 
 	it("should return status code 200 when the solider was patched", async () => {
-		const response = await request(app).patch(`/soldiers/1234567`).send(soldier);
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldier);
 		expect(response.statusCode).toBe(200);
 	});
 });
 
-
-
 describe("check if /soldiers/ patch endpoint works correctly", () => {
-	const limitations = {limitations:["food","money"]}
-	const badLimitations = {limitations:[1,"money"]}
+	const limitations = { limitations: ["food", "money"] };
+	const badLimitations = { limitations: [1, "money"] };
 
 	it("should return 400 when can't connect to db", async () => {
-		const response = await request(badApp).patch("/soldiers/1234567/limitations").send(limitations);
+		const response = await request(badApp)
+			.patch("/soldiers/1234567/limitations")
+			.send(limitations);
 		expect(response.statusCode).toBe(400);
 	});
 
 	it("should return status code 400 when the limitations aren't valid - using numbers", async () => {
-		const response = await request(app).patch(`/soldiers/1234567/limitations`).send(badLimitations);
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send(badLimitations);
 		expect(response.statusCode).toBe(400);
 	});
 
 	it("should return status code 400 when the limitations aren't valid - empty object", async () => {
-		const response = await request(app).patch(`/soldiers/1234567/limitations`).send({});
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send({});
 		expect(response.statusCode).toBe(400);
 	});
 
 	it("should return status code 400 when the solider id isn't valid", async () => {
-		const response = await request(app).patch(`/soldiers/1/limitations`).send(limitations);
-		
+		const response = await request(app)
+			.patch(`/soldiers/1/limitations`)
+			.send(limitations);
+
 		expect(response.statusCode).toBe(400);
 	});
 
 	it("should return status code 404 when the solider wasn't found", async () => {
-		const response = await request(app).patch(`/soldiers/0000000/limitations`).send(limitations);
+		const response = await request(app)
+			.patch(`/soldiers/0000000/limitations`)
+			.send(limitations);
 		expect(response.statusCode).toBe(404);
 	});
 
 	it("should return status code 200 when the solider was patched", async () => {
-		const response = await request(app).patch(`/soldiers/1234567/limitations`).send(limitations);
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send(limitations);
 		expect(response.statusCode).toBe(200);
 	});
 });
-

@@ -7,7 +7,7 @@ const client = new MongoClient(config.mongoURI);
 
 const PORT = config.port;
 
-const logger = pino({level:config.logLevel});
+const logger = pino({ level: config.logLevel });
 
 async function start() {
 	await client.connect();
