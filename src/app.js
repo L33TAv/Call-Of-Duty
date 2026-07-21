@@ -2,17 +2,19 @@ import express from "express";
 import { pino } from "pino";
 import config from "./config.js";
 import createSoldierRouter from "./routes/soldiers.js";
-import connectSoldiersCollection from "./soldiersDB.js";
+// import createDutiesRouter from "./routes/duties.js";
 
 const logger = pino({ level: config.logLevel });
 
 function createApp(client) {
 	const app = express();
 	const soldierRoute = createSoldierRouter(client);
+	// const dutyRoute = createDutiesRouter(client);
 
 	app.use(express.json());
 
 	app.use("/soldiers", soldierRoute);
+	// app.use("/duties", dutyRoute);
 
 	app.get("/health", (_req, res) => {
 		return res.status(200).json({ status: "ok" });

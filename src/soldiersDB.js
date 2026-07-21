@@ -15,7 +15,7 @@ export default function connectSoldiersCollection(mongoClient) {
 			return collection.deleteOne(idObject);
 		},
 		async updateById(idObject, newSoldier) {
-			return collection.replaceOne(idObject, newSoldier);
+			return collection.updateOne(idObject, { $set : newSoldier});
 		},
 		async updateLimitationsById(idObject, limitations, updatedAt) {
 			return collection.updateOne(idObject, {
