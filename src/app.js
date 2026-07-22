@@ -4,15 +4,17 @@ import config from "./config.js";
 import createSoldierRouter from "./routes/soldiers.js";
 import connectSoldiersCollection from "./soldiersDB.js";
 
-const logger = pino({ level: config.logLevel });
+// import createDutiesRouter from "./routes/duties.js";
 
 function createApp(client) {
 	const app = express();
 	const soldierRoute = createSoldierRouter(client);
+	// const dutyRoute = createDutiesRouter(client);
 
 	app.use(express.json());
 
 	app.use("/soldiers", soldierRoute);
+	// app.use("/duties", dutyRoute);
 
 	app.get("/health", (_req, res) => {
 		return res.status(200).json({ status: "ok" });
