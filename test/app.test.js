@@ -22,10 +22,6 @@ const mockClient = {
 				if (object._id === "1234567") return { deletedCount: 1 };
 				return { deletedCount: 0 };
 			},
-			replaceOne: async (object) => {
-				if (object._id === "0000000") return { modifiedCount: 0 };
-				return { modifiedCount: 1 };
-			},
 			updateOne: async (object) => {
 				if (object._id === "0000000") return { modifiedCount: 0 };
 				return { modifiedCount: 1 };

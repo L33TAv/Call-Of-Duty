@@ -264,7 +264,7 @@ function createSoldierRouter(client) {
 
 			res
 				.status(200)
-				.json({ message: `new Solider:${JSON.stringify(validatedSoldier)}` });
+				.json({ message: `new soldier:${JSON.stringify(validatedSoldier)}` });
 		} catch (err) {
 			logger.error(`error with ${req.path} patch request.\n`, err);
 			if (err instanceof z.ZodError) {
