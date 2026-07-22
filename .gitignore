@@ -1,0 +1,8 @@
+node_modules/
+.env
+.agents/
+skills-lock.json
+coverage/
+info
+silent
+playground/

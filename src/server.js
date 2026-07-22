@@ -1,33 +1,27 @@
-const express = require("express");
+import { MongoClient } from "mongodb";
+import { pino } from "pino";
+import createApp from "./app.js";
+import config from "./config.js";
 
-const {MongoClient} = require("mongodb");
+const client = new MongoClient(config.mongoURI);
 
-const client = new MongoClient(process.env.MONGO_URI);
+const PORT = config.port;
 
-const app = express();
+const logger = pino({ level: config.logLevel });
 
-const pino = require('pino');
-const logger = pino();
+async function start() {
+	await client.connect();
 
-const PORT = process.env.PORT || 3000;
+	const app = createApp(client);
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
-});
+	const server = app.listen(PORT, () => {
+		logger.info(`Server is running on port ${PORT}`);
+	});
 
-async function start(){
-
-  await client.connect();
-
-  const server = app.listen(PORT, () => {
-    logger.info('Server is running on port ${PORT}');
-  });
-
-  server.on('close', async () => {
-    await client.close();
-    logger.info('server was closed');
-  });
-
+	server.on("close", async () => {
+		await client.close();
+		logger.info("server was closed");
+	});
 }
 
 start();

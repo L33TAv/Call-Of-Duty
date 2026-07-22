@@ -1,0 +1,380 @@
+import request from "supertest";
+
+import { describe, expect, it } from "vitest";
+
+import createApp from "../src/app.js";
+import connectSoldiersCollection from "../src/soldiersDB.js";
+
+const mockClient = {
+	db: () => ({
+		command: async () => ({ ok: 1 }),
+		connect: async () => ({}),
+		collection: () => ({
+			insertOne: async () => {},
+			findOne: async (soldier) => {
+				if (soldier._id === "1234567") return "exists";
+				return null;
+			},
+			find: () => ({
+				toArray: async () => [{}],
+			}),
+			deleteOne: async (object) => {
+				if (object._id === "0000000") return { deletedCount: 1 };
+				return { deletedCount: 0 };
+			},
+			replaceOne: async (object) => {
+				if (object._id === "0000000") return { modifiedCount: 0 };
+				return { modifiedCount: 1 };
+			},
+			updateOne: async (object) => {
+				if (object._id === "0000000") return { modifiedCount: 0 };
+				return { modifiedCount: 1 };
+			},
+		}),
+	}),
+};
+
+const mockBrokenClient = {
+	db: () => ({
+		command: async () => {
+			throw new Error("connection lost");
+		},
+		collection: () => {
+			throw new Error("can't connect to DB");
+		},
+	}),
+};
+
+const app = createApp(mockClient);
+const badApp = createApp(mockBrokenClient);
+
+describe("checks that health endpoints works correctly", () => {
+	it("should return code 200 for /health endpoint", async () => {
+		const response = await request(app).get("/health");
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ status: "ok" });
+	});
+
+	it("should return status code 200 for /health/db get route", async () => {
+		const response = await request(app).get("/health/db");
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ status: "ok" });
+	});
+
+	it("should return status code 500 when fails to ping /health/db get route", async () => {
+		const badResponse = await request(badApp).get("/health/db");
+		expect(badResponse.statusCode).toBe(500);
+		expect(badResponse.body.status).toBe("error");
+	});
+});
+
+describe("check if /soldiers post endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const validSoldier = {
+			_id: "1234567",
+			name: "Liav",
+			rankValue: 0,
+			rankName: "private",
+		};
+		const response = await request(badApp).post("/soldiers").send(validSoldier);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	const scenarios = [
+		{
+			label: "should return 400 when name is missing",
+			body: { _id: "1234567", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is missing",
+			body: { name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue or rankName is missing",
+			body: { name: "Liav", _id: "1234567" },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 400 when rankName is invalid",
+			body: { name: "Liav", rankName: "Superman", _id: "1234567" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue is invalid",
+			body: { _id: "1234567", name: "Liav", rankValue: "14" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when limitations format is invalid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankName: "private",
+				limitations: [1],
+			},
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is invalid",
+			body: { _id: "1", name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when name is invalid",
+			body: { _id: "1234567", name: "S", rankName: "private" },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 400 when rankName doesnt match rankValue",
+			body: { _id: "1234567", name: "S", rankName: "private", rankValue: 3 },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankName: "private" },
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankValue: 1,
+				limitations: ["be nice"],
+			},
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankValue: 0, rankName: "private" },
+			expectedStatus: 201,
+		},
+	];
+
+	scenarios.forEach(({ label, body, expectedStatus }) => {
+		it(label, async () => {
+			const response = await request(app).post("/soldiers").send(body);
+
+			expect(response.statusCode).toBe(expectedStatus);
+		});
+	});
+});
+
+describe("check if /soldiers/:id get endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).get("/soldiers/1234567");
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 200 when soldier was found", async () => {
+		const response = await request(app).get(`/soldiers/1234567`);
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 400 when soldier id isn't valid", async () => {
+		const response = await request(app).get(`/soldiers/notValidId`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when soldier was not found", async () => {
+		const response = await request(app).get(`/soldiers/1111111`);
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe("check if /soldiers/ get endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).get("/soldiers");
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - name length", async () => {
+		const response = await request(app).get(`/soldiers?name=a`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - rankValue isn't a number", async () => {
+		const response = await request(app).get(`/soldiers?rankValue=a`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when soldier isn't valid - property doesn't exist", async () => {
+		const response = await request(app).get(`/soldiers?randomProperty=abc`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 200 when soldier is valid", async () => {
+		const response = await request(app).get(`/soldiers?name=sam`);
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 200 when no soldier attributes are given", async () => {
+		const response = await request(app).get(`/soldiers`);
+		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe("check if /soldiers/:id delete endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).delete("/soldiers/1234567");
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider parameters aren't valid", async () => {
+		const response = await request(app).delete(`/soldiers/1`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app).delete(`/soldiers/1234567`);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 204 when the solider was deleted", async () => {
+		const response = await request(app).delete(`/soldiers/0000000`);
+		expect(response.statusCode).toBe(204);
+	});
+});
+
+describe("check if /soldiers/ patch endpoint works correctly", () => {
+	const soldier = {
+		_id: "1234567",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+		limitations:["food"]
+	};
+
+	const soldierChangeId = {
+		_id: "1111111",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+
+	const unknownSoldier = {
+		_id: "0000000",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+
+	const newChangesNotValid = {
+		name:"ariel",
+		rankName:"private",
+		rankValue:4
+	};
+
+	const newChangesValid = {
+		name:"ariel",
+		rankName:"private",
+		limitations:["food"]
+	};
+
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp)
+			.patch("/soldiers/1234567")
+			.send(soldier);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider parameters aren't valid", async () => {
+		const response = await request(app).patch(`/soldiers/1`).send(soldier);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider id can't be changed", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldierChangeId);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/0000000`)
+			.send(unknownSoldier);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 400 when the parameters aren't valid - rankName with rankValue", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesNotValid);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 200 when the solider was patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldier);
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 200 when the parameters were patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesValid);
+		expect(response.statusCode).toBe(200);
+	}); /*CONTINUE ------------------------------------*/
+});
+
+describe("check if /soldiers/ patch endpoint works correctly", () => {
+	const limitations = { limitations: ["food", "money"] };
+	const badLimitations = { limitations: [1, "money"] };
+
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp)
+			.patch("/soldiers/1234567/limitations")
+			.send(limitations);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the limitations aren't valid - using numbers", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send(badLimitations);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the limitations aren't valid - empty object", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send({});
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the solider id isn't valid", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1/limitations`)
+			.send(limitations);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the solider wasn't found", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/0000000/limitations`)
+			.send(limitations);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 200 when the solider was patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567/limitations`)
+			.send(limitations);
+		expect(response.statusCode).toBe(200);
+	});
+});
