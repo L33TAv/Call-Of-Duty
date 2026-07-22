@@ -1,16 +1,16 @@
 import express from "express";
-import { pino } from "pino";
-import config from "./config.js";
-import createSoldierRouter from "./routes/soldiers.js";
-import connectSoldiersCollection from "./soldiersDB.js";
+import errorHandler from "./middleware/errorHandler.js";
 
-const logger = pino({ level: config.logLevel });
+import { logger, pinoLogger } from "./middleware/logger.js";
+import createSoldierRouter from "./routes/soldiers.js";
 
 function createApp(client) {
 	const app = express();
 	const soldierRoute = createSoldierRouter(client);
 
 	app.use(express.json());
+
+	app.use(logger);
 
 	app.use("/soldiers", soldierRoute);
 
@@ -23,10 +23,15 @@ function createApp(client) {
 			await client.db("admin").command({ ping: 1 });
 			return res.status(200).json({ status: "ok" });
 		} catch (err) {
-			logger.error(`error with ${req.path} get request.\n`, err);
+			pinoLogger.error(
+				`error with ${req.originalUrl} ${req.method} endpoint.\n`,
+				err,
+			);
 			res.status(500).json({ status: "error", message: err.message });
 		}
 	});
+
+	app.use(errorHandler);
 
 	return app;
 }

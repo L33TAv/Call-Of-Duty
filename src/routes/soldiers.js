@@ -1,10 +1,6 @@
 import express from "express";
-import { pino } from "pino";
 import * as z from "zod";
-import config from "../config.js";
 import connectSoldiersCollection from "../soldiersDB.js";
-
-const logger = pino({ level: config.logLevel });
 
 const RANK_NAMES = {
 	0: "private",
@@ -96,218 +92,130 @@ function createSoldierRouter(client) {
 	const router = express.Router();
 
 	router.post("/", async (req, res) => {
-		try {
-			const validatedSoldier = soldierSchema.parse(req.body);
+		const validatedSoldier = soldierSchema.parse(req.body);
 
-			if (validatedSoldier.limitations) {
-				validatedSoldier.limitations = validatedSoldier.limitations.map(
-					(limitation) => limitation.toLowerCase(),
-				);
-			}
-
-			validatedSoldier["createdAt"] = new Date();
-			validatedSoldier["updatedAt"] = new Date();
-
-			const soldiersCollection = connectSoldiersCollection(client);
-
-			await soldiersCollection.insertOne(validatedSoldier);
-
-			logger.info(`request for ${req.path} post endpoint was successful.`);
-
-			return res.status(201).json({
-				message: `soldier was added successfully, \n${JSON.stringify(validatedSoldier)}`,
-			});
-		} catch (err) {
-			logger.error(`error with ${req.path} post request.\n`, err);
-			if (err instanceof z.ZodError)
-				return res.status(400).json({
-					status: "error",
-					message: `there was a problem with the soldier information given \n${err}`,
-				});
-			res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
+		if (validatedSoldier.limitations) {
+			validatedSoldier.limitations = validatedSoldier.limitations.map(
+				(limitation) => limitation.toLowerCase(),
+			);
 		}
+
+		validatedSoldier["createdAt"] = new Date();
+		validatedSoldier["updatedAt"] = new Date();
+
+		const soldiersCollection = connectSoldiersCollection(client);
+
+		await soldiersCollection.insertOne(validatedSoldier);
+
+		return res.status(201).json({
+			message: `soldier was added successfully, \n${JSON.stringify(validatedSoldier)}`,
+		});
 	});
 
 	router.get("/:id", async (req, res) => {
-		try {
-			const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
+		const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
 
-			const soldiersCollection = connectSoldiersCollection(client);
+		const soldiersCollection = connectSoldiersCollection(client);
 
-			const soldierInDB = await soldiersCollection.findById(soldierToFind);
+		const soldierInDB = await soldiersCollection.findById(soldierToFind);
 
-			if (soldierInDB) {
-				logger.info(`request for ${req.path} get endpoint was successful.`);
-				return res.status(200).json({
-					message: `soldier was found ${JSON.stringify(soldierInDB)} `,
-				});
-			}
-
-			return res
-				.status(404)
-				.json({ status: "error", message: "soldier was not found." });
-		} catch (err) {
-			logger.error(`error with ${req.path} get request.\n`, err);
-			if (err instanceof z.ZodError) {
-				return res.status(400).json({
-					status: "error",
-					message: `there was a problem. \n${err.message}`,
-				});
-			}
-			return res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
+		if (soldierInDB) {
+			return res.status(200).json({
+				message: `soldier was found ${JSON.stringify(soldierInDB)} `,
+			});
 		}
+
+		return res
+			.status(404)
+			.json({ status: "error", message: "soldier was not found." });
 	});
 
 	router.get("/", async (req, res) => {
-		try {
-			let limitations = req.query.limitations
-				?.split(",")
-				?.filter((item) => item.trim() !== "");
-			if (limitations?.length === 0) limitations = undefined;
+		let limitations = req.query.limitations
+			?.split(",")
+			?.filter((item) => item.trim() !== "");
+		if (limitations?.length === 0) limitations = undefined;
 
-			const validatedSearch = soldierGetSchema.parse({
-				...req.query,
-				limitations,
-			});
+		const validatedSearch = soldierGetSchema.parse({
+			...req.query,
+			limitations,
+		});
 
-			const filter = Object.fromEntries(
-				Object.entries(validatedSearch).filter(
-					([key, value]) => value !== undefined && value !== null,
-				),
-			);
+		const filter = Object.fromEntries(
+			Object.entries(validatedSearch).filter(
+				([key, value]) => value !== undefined && value !== null,
+			),
+		);
 
-			const soldierCollection = connectSoldiersCollection(client);
-			const soldiersFound = await soldierCollection.find(filter);
+		const soldierCollection = connectSoldiersCollection(client);
+		const soldiersFound = await soldierCollection.find(filter);
 
-			logger.info(`request for ${req.path} get endpoint was successful.`);
-
-			return res.status(200).json(soldiersFound);
-		} catch (err) {
-			logger.error(`error with ${req.path} get request.\n`, err);
-			if (err instanceof z.ZodError) {
-				return res.status(400).json({
-					status: "error",
-					message: `there was a problem. \n${err.message}`,
-				});
-			}
-			return res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
-		}
+		return res.status(200).json(soldiersFound);
 	});
 
 	router.delete("/:id", async (req, res) => {
-		try {
-			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 
-			const soldierCollection = connectSoldiersCollection(client);
+		const soldierCollection = connectSoldiersCollection(client);
 
-			const deleteResponse =
-				await soldierCollection.deleteById(validatedSoldierId);
+		const deleteResponse =
+			await soldierCollection.deleteById(validatedSoldierId);
 
-			if (!deleteResponse.deletedCount)
-				return res
-					.status(404)
-					.json({ status: "error", message: "soldier wasn't found" });
-
-			logger.info(`request for ${req.path} delete endpoint was successful.`);
-
-			return res.sendStatus(204);
-		} catch (err) {
-			logger.error(`error with ${req.path} delete request.\n`, err);
-			if (err instanceof z.ZodError) {
-				return res.status(400).json({
-					status: "error",
-					message: `there was a validation problem. \n${err.message}`,
-				});
-			}
+		if (!deleteResponse.deletedCount)
 			return res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
-		}
+				.status(404)
+				.json({ status: "error", message: "soldier wasn't found" });
+
+		return res.sendStatus(204);
 	});
 
 	router.patch("/:id", async (req, res) => {
-		try {
-			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 
-			const validatedSoldier = soldierGetSchema.parse(req.body);
+		const validatedSoldier = soldierGetSchema.parse(req.body);
 
-			validatedSoldier.updatedAt = new Date();
+		validatedSoldier.updatedAt = new Date();
 
-			const soldierCollection = connectSoldiersCollection(client);
+		const soldierCollection = connectSoldiersCollection(client);
 
-			const patchResponse = await soldierCollection.updateById(
-				validatedSoldierId,
-				validatedSoldier,
-			);
+		const patchResponse = await soldierCollection.updateById(
+			validatedSoldierId,
+			validatedSoldier,
+		);
 
-			if (!(patchResponse.modifiedCount === 1))
-				return res.status(404).json({
-					status: "error",
-					message: "soldier wasn't found or couldn't be changed",
-				});
+		if (!(patchResponse.modifiedCount === 1))
+			return res.status(404).json({
+				status: "error",
+				message: "soldier wasn't found or couldn't be changed",
+			});
 
-			logger.info(`request for ${req.path} patch endpoint was successful.`);
-
-			res
-				.status(200)
-				.json({ message: `new soldier:${JSON.stringify(validatedSoldier)}` });
-		} catch (err) {
-			logger.error(`error with ${req.path} patch request.\n`, err);
-			if (err instanceof z.ZodError) {
-				return res.status(400).json({
-					status: "error",
-					message: `there was a validation problem. \n${err.message}`,
-				});
-			}
-			return res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
-		}
+		res
+			.status(200)
+			.json({ message: `new soldier:${JSON.stringify(validatedSoldier)}` });
 	});
 
 	router.patch("/:id/limitations", async (req, res) => {
-		try {
-			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
-			const newLimitations = soldierLimitationSchema.parse(req.body);
-			const updatedAt = { updatedAt: new Date() };
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+		const newLimitations = soldierLimitationSchema.parse(req.body);
+		const updatedAt = { updatedAt: new Date() };
 
-			const soldierCollection = connectSoldiersCollection(client);
+		const soldierCollection = connectSoldiersCollection(client);
 
-			const patchResponse = await soldierCollection.updateLimitationsById(
-				validatedSoldierId,
-				newLimitations,
-				updatedAt,
-			);
+		const patchResponse = await soldierCollection.updateLimitationsById(
+			validatedSoldierId,
+			newLimitations,
+			updatedAt,
+		);
 
-			if (!(patchResponse.modifiedCount === 1))
-				return res.status(404).json({
-					status: "error",
-					message: "soldier wasn't found or couldn't be changed",
-				});
-
-			logger.info(`request for ${req.path} patch endpoint was successful.`);
-
-			res.status(200).json({
-				message: `new limitations:${JSON.stringify(newLimitations.limitations)}`,
+		if (!(patchResponse.modifiedCount === 1))
+			return res.status(404).json({
+				status: "error",
+				message: "soldier wasn't found or couldn't be changed",
 			});
-		} catch (err) {
-			logger.error(`error with ${req.path} patch request.\n`, err);
-			if (err instanceof z.ZodError) {
-				return res.status(400).json({
-					status: "error",
-					message: `there was a validation problem. \n${err.message}`,
-				});
-			}
-			return res
-				.status(400)
-				.json({ status: "error", message: `there was a problem. \n${err}` });
-		}
+
+		res.status(200).json({
+			message: `new limitations:${JSON.stringify(newLimitations.limitations)}`,
+		});
 	});
 
 	return router;
