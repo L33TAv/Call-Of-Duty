@@ -4,7 +4,7 @@ import * as z from "zod";
 import config from "../config.js";
 import connectSoldiersCollection from "../soldiersDB.js";
 
-const logger = pino({level:config.logLevel});
+const logger = pino({ level: config.logLevel });
 
 const RANK_NAMES = {
 	0: "private",
@@ -57,12 +57,15 @@ const soldierIdSchema = z.object({
 		.length(7),
 });
 
-const soldierGetSchema = z.object({
-	name: z.string().min(3).max(50).optional(),
-	rankValue: z.coerce.number().gte(0).lte(6).optional(),
-	rankName: z.string().optional(),
-	limitations: z.array(z.string()).optional(),
-}).strict().refine(
+const soldierGetSchema = z
+	.object({
+		name: z.string().min(3).max(50).optional(),
+		rankValue: z.coerce.number().gte(0).lte(6).optional(),
+		rankName: z.string().optional(),
+		limitations: z.array(z.string()).optional(),
+	})
+	.strict()
+	.refine(
 		(data) => {
 			const rankValue = data["rankValue"];
 			const rankName = data["rankName"];
@@ -82,7 +85,6 @@ const soldierGetSchema = z.object({
 			error: "rankName or rankValue doesn't match the requirements.",
 		},
 	);
-
 
 const soldierLimitationSchema = z
 	.object({
@@ -130,7 +132,7 @@ function createSoldierRouter(client) {
 
 	router.get("/:id", async (req, res) => {
 		try {
-			const soldierToFind =soldierIdSchema.parse({ _id: req.params.id });
+			const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
 
 			const soldiersCollection = connectSoldiersCollection(client);
 
@@ -162,7 +164,9 @@ function createSoldierRouter(client) {
 
 	router.get("/", async (req, res) => {
 		try {
-			let limitations = req.query.limitations?.split(",")?.filter(item => item.trim() !== "");
+			let limitations = req.query.limitations
+				?.split(",")
+				?.filter((item) => item.trim() !== "");
 			if (limitations?.length === 0) limitations = undefined;
 
 			const validatedSearch = soldierGetSchema.parse({
@@ -245,7 +249,7 @@ function createSoldierRouter(client) {
 			if (!(patchResponse.modifiedCount === 1))
 				return res.status(404).json({
 					status: "error",
-					message: "solider wasn't found or couldn't be changed",
+					message: "soldier wasn't found or couldn't be changed",
 				});
 
 			logger.info(`request for ${req.path} patch endpoint was successful.`);
@@ -271,7 +275,7 @@ function createSoldierRouter(client) {
 		try {
 			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 			const newLimitations = soldierLimitationSchema.parse(req.body);
-			const updatedAt = {updatedAt:new Date()};
+			const updatedAt = { updatedAt: new Date() };
 
 			const soldierCollection = connectSoldiersCollection(client);
 
@@ -284,7 +288,7 @@ function createSoldierRouter(client) {
 			if (!(patchResponse.modifiedCount === 1))
 				return res.status(404).json({
 					status: "error",
-					message: "solider wasn't found or couldn't be changed",
+					message: "soldier wasn't found or couldn't be changed",
 				});
 
 			logger.info(`request for ${req.path} patch endpoint was successful.`);

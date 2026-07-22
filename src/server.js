@@ -10,7 +10,7 @@ const PORT = config.port;
 const logger = pino({ level: config.logLevel });
 
 async function start() {
-	try{
+	try {
 		await client.connect();
 
 		const app = createApp(client);
@@ -19,25 +19,23 @@ async function start() {
 			logger.info(`Server is running on port ${PORT}`);
 		});
 
-		process.on("SIGTERM", () => shutdown("SIGTERM",server));
-		process.on("SIGINT", () => shutdown("SIGINT",server)); 
-
-	}catch(err){
-		logger.error("Failed to start server:",err);
+		process.on("SIGTERM", () => shutdown("SIGTERM", server));
+		process.on("SIGINT", () => shutdown("SIGINT", server));
+	} catch (err) {
+		logger.error("Failed to start server:", err);
 		process.exit(1);
 	}
 }
 
-async function shutdown(signal,server) {
-	try
-	{
+async function shutdown(signal, server) {
+	try {
 		logger.info(`${signal} received. Shutting down gracefully...`);
 
-		await new Promise((resolve,reject) => {
+		await new Promise((resolve, reject) => {
 			server.close((err) => {
-			if (err) return reject(err);
-			logger.info("HTTP server closed");
-			resolve();
+				if (err) return reject(err);
+				logger.info("HTTP server closed");
+				resolve();
 			});
 		});
 
@@ -45,8 +43,8 @@ async function shutdown(signal,server) {
 		logger.info("MongoDB connection closed");
 
 		process.exit(0);
-	}catch(err){
-		logger.error("Error during shutdown:",err);
+	} catch (err) {
+		logger.error("Error during shutdown:", err);
 		process.exit(1);
 	}
 }
