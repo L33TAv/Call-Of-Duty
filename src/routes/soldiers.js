@@ -62,7 +62,27 @@ const soldierGetSchema = z.object({
 	rankValue: z.coerce.number().gte(0).lte(6).optional(),
 	rankName: z.string().optional(),
 	limitations: z.array(z.string()).optional(),
-});
+}).strict().refine(
+		(data) => {
+			const rankValue = data["rankValue"];
+			const rankName = data["rankName"];
+
+			if (
+				rankValue !== null &&
+				rankValue !== undefined &&
+				rankName !== null &&
+				rankName !== undefined
+			)
+				return RANK_NAMES[rankValue] === rankName;
+			else if (rankName !== null && rankName !== undefined)
+				return Object.values(RANK_NAMES).includes(rankName);
+			return true;
+		},
+		{
+			error: "rankName or rankValue doesn't match the requirements.",
+		},
+	);
+
 
 const soldierLimitationSchema = z
 	.object({
@@ -223,13 +243,7 @@ function createSoldierRouter(client) {
 		try {
 			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 
-			const validatedSoldier = soldierSchema.parse(req.body);
-
-			if (validatedSoldier._id !== validatedSoldierId._id)
-				return res.status(400).json({
-					status: "error",
-					message: "the 'id' field is immutable and cannot be modified.",
-				});
+			const validatedSoldier = soldierGetSchema.parse(req.body);
 
 			validatedSoldier.updatedAt = new Date();
 

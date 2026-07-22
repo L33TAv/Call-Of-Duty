@@ -249,22 +249,35 @@ describe("check if /soldiers/:id delete endpoint works correctly", () => {
 
 describe("check if /soldiers/ patch endpoint works correctly", () => {
 	const soldier = {
-		_id: "1234567",
 		name: "sam",
 		rankName: "private",
 		rankValue: 0,
+		limitations:["food"]
 	};
+
 	const soldierChangeId = {
 		_id: "1111111",
 		name: "sam",
 		rankName: "private",
 		rankValue: 0,
 	};
+
 	const unknownSoldier = {
-		_id: "0000000",
 		name: "sam",
 		rankName: "private",
 		rankValue: 0,
+	};
+
+	const newChangesNotValid = {
+		name:"ariel",
+		rankName:"private",
+		rankValue:4
+	};
+
+	const newChangesValid = {
+		name:"ariel",
+		rankName:"private",
+		limitations:["food"]
 	};
 
 	it("should return 400 when can't connect to db", async () => {
@@ -294,10 +307,24 @@ describe("check if /soldiers/ patch endpoint works correctly", () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	it("should return status code 400 when the parameters aren't valid - rankName with rankValue", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesNotValid);
+		expect(response.statusCode).toBe(400);
+	});
+
 	it("should return status code 200 when the solider was patched", async () => {
 		const response = await request(app)
 			.patch(`/soldiers/1234567`)
 			.send(soldier);
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 200 when the parameters were patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesValid);
 		expect(response.statusCode).toBe(200);
 	});
 });
