@@ -215,6 +215,11 @@ describe("check if /soldiers/ get endpoint works correctly", () => {
 		expect(response.statusCode).toBe(200);
 	});
 
+	it("should return status code 200 when an empty limitations are given", async () => {
+		const response = await request(app).get(`/soldiers?limitations=`);
+		expect(response.statusCode).toBe(200);
+	});
+
 	it("should return status code 200 when no soldier attributes are given", async () => {
 		const response = await request(app).get(`/soldiers`);
 		expect(response.statusCode).toBe(200);
