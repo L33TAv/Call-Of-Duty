@@ -5,11 +5,11 @@ export default function connectSoldiersCollection(mongoClient) {
 		async insertOne(soldier) {
 			return collection.insertOne(soldier);
 		},
-		async findById(id) {
-			return collection.findOne({ _id: id });
+		async findById(idObject) {
+			return collection.findOne(idObject);
 		},
-		async find(limitation = {}) {
-			return collection.find(limitation).toArray();
+		async find(filter = {}) {
+			return collection.find(filter).toArray();
 		},
 		async deleteById(idObject) {
 			return collection.deleteOne(idObject);
@@ -20,7 +20,7 @@ export default function connectSoldiersCollection(mongoClient) {
 		async updateLimitationsById(idObject, limitations, updatedAt) {
 			return collection.updateOne(idObject, {
 				$addToSet: { limitations: { $each: limitations.limitations } },
-				$set: { updatedAt: updatedAt },
+				$set: updatedAt,
 			});
 		},
 	};

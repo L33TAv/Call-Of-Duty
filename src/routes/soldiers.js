@@ -110,9 +110,7 @@ function createSoldierRouter(client) {
 
 	router.get("/:id", async (req, res) => {
 		try {
-			const soldierToFind = req.params.id;
-
-			soldierIdSchema.parse({ _id: soldierToFind });
+			const soldierToFind =soldierIdSchema.parse({ _id: req.params.id });
 
 			const soldiersCollection = connectSoldiersCollection(client);
 
@@ -169,6 +167,7 @@ function createSoldierRouter(client) {
 					([key, value]) => value !== undefined && value !== null,
 				),
 			);
+
 			const soldierCollection = connectSoldiersCollection(client);
 			const soldiersFound = await soldierCollection.find(filter);
 
@@ -270,7 +269,7 @@ function createSoldierRouter(client) {
 		try {
 			const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 			const newLimitations = soldierLimitationSchema.parse(req.body);
-			const updatedAt = new Date();
+			const updatedAt = {updatedAt:new Date()};
 
 			const soldierCollection = connectSoldiersCollection(client);
 

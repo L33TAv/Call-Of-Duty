@@ -19,7 +19,7 @@ const mockClient = {
 				toArray: async () => [{}],
 			}),
 			deleteOne: async (object) => {
-				if (object._id === "0000000") return { deletedCount: 1 };
+				if (object._id === "1234567") return { deletedCount: 1 };
 				return { deletedCount: 0 };
 			},
 			replaceOne: async (object) => {
@@ -237,12 +237,12 @@ describe("check if /soldiers/:id delete endpoint works correctly", () => {
 	});
 
 	it("should return status code 404 when the solider wasn't found", async () => {
-		const response = await request(app).delete(`/soldiers/1234567`);
+		const response = await request(app).delete(`/soldiers/0000000`);
 		expect(response.statusCode).toBe(404);
 	});
 
 	it("should return status code 204 when the solider was deleted", async () => {
-		const response = await request(app).delete(`/soldiers/0000000`);
+		const response = await request(app).delete(`/soldiers/1234567`);
 		expect(response.statusCode).toBe(204);
 	});
 });
