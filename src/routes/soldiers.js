@@ -4,7 +4,7 @@ import * as z from "zod";
 import config from "../config.js";
 import connectSoldiersCollection from "../soldiersDB.js";
 
-const logger = pino(config.logLevel);
+const logger = pino({level:config.logLevel});
 
 const RANK_NAMES = {
 	0: "private",

@@ -216,7 +216,7 @@ describe("check if /soldiers/ get endpoint works correctly", () => {
 	});
 
 	it("should return status code 200 when no soldier attributes are given", async () => {
-		const response = await request(app).get(`/soldiers?name=sam`);
+		const response = await request(app).get(`/soldiers`);
 		expect(response.statusCode).toBe(200);
 	});
 });
