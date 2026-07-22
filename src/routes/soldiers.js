@@ -26,8 +26,8 @@ const soldierSchema = z
 	.strict()
 	.refine(
 		(data) => {
-			const rankValue = data["rankValue"];
-			const rankName = data["rankName"];
+			const rankValue = data.rankValue;
+			const rankName = data.rankName;
 
 			if (
 				rankValue !== null &&
@@ -63,8 +63,8 @@ const soldierGetSchema = z
 	.strict()
 	.refine(
 		(data) => {
-			const rankValue = data["rankValue"];
-			const rankName = data["rankName"];
+			const rankValue = data.rankValue;
+			const rankName = data.rankName;
 
 			if (
 				rankValue !== null &&
@@ -100,8 +100,8 @@ function createSoldierRouter(client) {
 			);
 		}
 
-		validatedSoldier["createdAt"] = new Date();
-		validatedSoldier["updatedAt"] = new Date();
+		validatedSoldier.createdAt = new Date();
+		validatedSoldier.updatedAt = new Date();
 
 		const soldiersCollection = connectSoldiersCollection(client);
 
@@ -143,7 +143,7 @@ function createSoldierRouter(client) {
 
 		const filter = Object.fromEntries(
 			Object.entries(validatedSearch).filter(
-				([key, value]) => value !== undefined && value !== null,
+				([_key, value]) => value !== undefined && value !== null,
 			),
 		);
 

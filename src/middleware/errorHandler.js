@@ -23,7 +23,7 @@ const errorHandler = (err, req, res, _next) => {
 			status: "error",
 			message: `there was a zod error with the information given \n${err}`,
 		});
-        
+
 	return res
 		.status(400)
 		.json({ status: "error", message: `there was an error. \n${err}` });

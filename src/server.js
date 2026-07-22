@@ -1,7 +1,7 @@
 import { MongoClient } from "mongodb";
-import { pinoLogger } from "./middleware/logger.js";
 import createApp from "./app.js";
 import config from "./config.js";
+import { pinoLogger } from "./middleware/logger.js";
 
 const client = new MongoClient(config.mongoURI);
 
