@@ -162,23 +162,11 @@ function createSoldierRouter(client) {
 
 	router.get("/", async (req, res) => {
 		try {
-			let { name, rankValue, rankName, limitations, ...rest } = req.query;
-
-			if (limitations) {
-				limitations = limitations.split(",");
-			}
-
-			if (Object.keys(rest).length > 0) {
-				return res.status(400).json({
-					status: "error",
-					message: `unknown parameters were given - ${Object.keys(rest).join(", ")}`,
-				});
-			}
+			let limitations = req.query.limitations?.split(",")?.filter(item => item.trim() !== "");
+			if (limitations?.length === 0) limitations = undefined;
 
 			const validatedSearch = soldierGetSchema.parse({
-				name,
-				rankValue,
-				rankName,
+				...req.query,
 				limitations,
 			});
 
