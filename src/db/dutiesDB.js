@@ -5,5 +5,8 @@ export default function connectDutiesCollection(mongoClient) {
 		async insertOne(duty) {
 			return collection.insertOne(duty);
 		},
+		async find(filter = {}) {
+			return collection.find(filter).toArray();
+		},
 	};
 }
