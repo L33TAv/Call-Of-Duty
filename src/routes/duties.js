@@ -1,14 +1,12 @@
 import express from "express";
 import { ObjectId } from "mongodb";
 import { pino } from "pino";
-import * as z from "zod";
 import config from "../config.js";
 
 import connectDutiesCollection from "../db/dutiesDB.js";
 
 import {
 	dutyScehma,
-	GeoJsonPointSchema,
 	getDutySchema,
 	objectIdSchema,
 } from "../schemas/duties.js";
@@ -71,6 +69,30 @@ function createDutiesRouter(client) {
 		return res
 			.status(404)
 			.json({ status: "error", message: "duty was not found." });
+	});
+
+	router.delete("/:id", async (req, res) => {
+		objectIdSchema.parse({ _id: req.params.id });
+
+		const validatedId = { _id: new ObjectId(req.params.id) };
+
+		const dutyCollection = connectDutiesCollection(client);
+
+		const dutyFound = await dutyCollection.findById(validatedId);
+
+		if (dutyFound?.status === "scheduled")
+			return res
+				.status(404)
+				.json({ status: "error", message: "scheduled duty can't be deleted" });
+
+		const deleteResponse = await dutyCollection.deleteById(validatedId);
+
+		if (!deleteResponse.deletedCount)
+			return res
+				.status(404)
+				.json({ status: "error", message: "duty wasn't found." });
+
+		return res.sendStatus(204);
 	});
 
 	return router;
