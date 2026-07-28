@@ -11,5 +11,8 @@ export default function connectDutiesCollection(mongoClient) {
 		async findById(filter = {}) {
 			return collection.findOne(filter);
 		},
+		async deleteById(idObject) {
+			return collection.deleteOne(idObject);
+		},
 	};
 }
