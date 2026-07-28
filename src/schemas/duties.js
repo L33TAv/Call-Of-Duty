@@ -1,5 +1,15 @@
 import * as z from "zod";
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
+const objectIdSchema = z
+	.object({
+		_id: z
+			.string()
+			.regex(objectIdRegex, { message: "Invalid MongoDB ObjectId" }),
+	})
+	.strict();
+
 const GeoJsonPointSchema = z.object({
 	type: z.literal("Point"),
 	coordinates: z
@@ -59,4 +69,4 @@ const getDutySchema = z
 		},
 	);
 
-export { dutyScehma, GeoJsonPointSchema, getDutySchema };
+export { dutyScehma, GeoJsonPointSchema, getDutySchema, objectIdSchema };

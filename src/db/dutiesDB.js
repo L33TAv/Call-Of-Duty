@@ -8,5 +8,8 @@ export default function connectDutiesCollection(mongoClient) {
 		async find(filter = {}) {
 			return collection.find(filter).toArray();
 		},
+		async findById(filter = {}) {
+			return collection.findOne(filter);
+		},
 	};
 }

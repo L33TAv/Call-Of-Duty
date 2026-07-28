@@ -1,4 +1,5 @@
 import express from "express";
+import { ObjectId } from "mongodb";
 import { pino } from "pino";
 import * as z from "zod";
 import config from "../config.js";
@@ -9,6 +10,7 @@ import {
 	dutyScehma,
 	GeoJsonPointSchema,
 	getDutySchema,
+	objectIdSchema,
 } from "../schemas/duties.js";
 
 const logger = pino({ level: config.logLevel });
@@ -49,6 +51,26 @@ function createDutiesRouter(client) {
 		const dutiesFound = await dutyCollection.find(validatedSearch);
 
 		return res.status(200).json(dutiesFound);
+	});
+
+	router.get("/:id", async (req, res) => {
+		objectIdSchema.parse({ _id: req.params.id });
+
+		const validatedId = { _id: new ObjectId(req.params.id) };
+
+		const dutyCollection = connectDutiesCollection(client);
+
+		const dutyFound = await dutyCollection.findById(validatedId);
+
+		if (dutyFound) {
+			return res.status(200).json({
+				message: `duty was found ${JSON.stringify(dutyFound)} `,
+			});
+		}
+
+		return res
+			.status(404)
+			.json({ status: "error", message: "duty was not found." });
 	});
 
 	return router;
