@@ -9,6 +9,7 @@ import {
 	dutyScehma,
 	getDutySchema,
 	objectIdSchema,
+	patchDutyScehma,
 } from "../schemas/duties.js";
 
 const logger = pino({ level: config.logLevel });
@@ -93,6 +94,38 @@ function createDutiesRouter(client) {
 				.json({ status: "error", message: "duty wasn't found." });
 
 		return res.sendStatus(204);
+	});
+
+	router.patch("/:id", async (req, res) => {
+		objectIdSchema.parse({ _id: req.params.id });
+
+		const validatedId = { _id: new ObjectId(req.params.id) };
+
+		const dutyCollection = connectDutiesCollection(client);
+
+		const dutyFound = await dutyCollection.findById(validatedId);
+
+		if (dutyFound?.status === "scheduled")
+			return res
+				.status(404)
+				.json({ status: "error", message: "scheduled duty can't be changed" });
+
+		const validatedDuty = patchDutyScehma.parse(req.body);
+
+		const patchResponse = await dutyCollection.updateById(
+			validatedId,
+			validatedDuty,
+		);
+
+		if (!(patchResponse.modifiedCount === 1))
+			return res.status(404).json({
+				status: "error",
+				message: "duty wasn't found or couldn't be changed",
+			});
+
+		res.status(200).json({
+			message: `new duty:${JSON.stringify(validatedDuty)}`,
+		});
 	});
 
 	return router;
