@@ -69,4 +69,40 @@ const getDutySchema = z
 		},
 	);
 
-export { dutyScehma, GeoJsonPointSchema, getDutySchema, objectIdSchema };
+let patchDutyScehma = z
+	.object({
+		name: z.string().min(3).max(50).optional(),
+		description: z.string().min(1).max(100).optional(),
+		location: GeoJsonPointSchema.optional(),
+		startTime: z.string().datetime().optional(),
+		endTime: z.string().datetime().optional(),
+		constraints: z.array(z.string()).optional(),
+		soldiersRequired: z.coerce.number().positive().optional(),
+		value: z.coerce.number().positive().optional(),
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+	})
+	.strict()
+	.refine(
+		(data) => {
+			if (data.startTime && data.endTime) return data.startTime < data.endTime;
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	);
+
+patchDutyScehma = patchDutyScehma.refine(
+	(data) => Object.keys(data).length > 0,
+	{ message: "At least one property must be provided" },
+);
+
+export {
+	dutyScehma,
+	GeoJsonPointSchema,
+	getDutySchema,
+	objectIdSchema,
+	patchDutyScehma,
+};
