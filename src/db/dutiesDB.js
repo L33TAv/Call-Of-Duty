@@ -14,5 +14,8 @@ export default function connectDutiesCollection(mongoClient) {
 		async deleteById(idObject) {
 			return collection.deleteOne(idObject);
 		},
+		async updateById(idObject, newDuty) {
+			return collection.updateOne(idObject, { $set: newDuty });
+		},
 	};
 }
