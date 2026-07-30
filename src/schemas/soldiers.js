@@ -80,5 +80,10 @@ const soldierGetSchema = z
         },
     );
 
+const soldierLimitationSchema = z
+    .object({
+        limitations: z.array(z.string()),
+    })
+    .strict();
 
-export {soldierSchema,soldierIdSchema,soldierGetSchema};
+export {soldierSchema,soldierIdSchema,soldierLimitationSchema,soldierGetSchema};

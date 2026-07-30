@@ -19,5 +19,11 @@ export default function soldiersRepository(mongoClient) {
 		async updateById(idObject, newSoldier) {
 			return collection.updateOne(idObject, { $set: newSoldier });
 		},
+		async updateLimitationsById(idObject, limitations, updatedAt) {
+			return collection.updateOne(idObject, {
+				$addToSet: { limitations: { $each: limitations.limitations } },
+				$set: updatedAt,
+			});
+		},
 	};
 }

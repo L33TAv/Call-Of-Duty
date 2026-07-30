@@ -1,7 +1,7 @@
 import express from "express";
 import * as z from "zod";
 import soldiersRepository from "../db/soldiersDB.js";
-import {soldierSchema,soldierIdSchema,soldierGetSchema} from "../schemas/soldiers.js";
+import {soldierSchema,soldierIdSchema,soldierLimitationSchema,soldierGetSchema} from "../schemas/soldiers.js";
 
 function createSoldierRouter(client) {
 	const router = express.Router();
@@ -92,6 +92,30 @@ function createSoldierRouter(client) {
 		return res.status(404).json({
 			status: "error",
 			message: "soldier wasn't found or couldn't be changed",
+		});
+	});
+
+	router.patch("/:id/limitations", async (req, res) => {
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+		const newLimitations = soldierLimitationSchema.parse(req.body);
+		const updatedAt = { updatedAt: new Date() };
+
+		const soldierCollection = soldiersRepository(client);
+
+		const patchResponse = await soldierCollection.updateLimitationsById(
+			validatedSoldierId,
+			newLimitations,
+			updatedAt,
+		);
+
+		if (!(patchResponse.modifiedCount === 1))
+			return res.status(404).json({
+				status: "error",
+				message: "soldier wasn't found or couldn't be changed",
+			});
+
+		res.status(200).json({
+			message: `new limitations:${JSON.stringify(newLimitations.limitations)}`,
 		});
 	});
 
