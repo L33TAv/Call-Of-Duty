@@ -1,14 +1,18 @@
 import createSoldierRouter from "./routes/soldiers.js";
 import express from "express";
-import { pino } from "pino";
-import config from "./config.js";
+import errorHandler from "./middleware/errorHandler.js";
 
-const logger = pino({level:config.logLevel});
+import { logger, loggerMiddelware } from "./middleware/logger.js";
+
 
 function createApp(client) {
 	const app = express();
 	const soldierRoute = createSoldierRouter(client);
+
 	app.use(express.json());
+
+	app.use(loggerMiddelware);
+
 	app.use("/soldiers", soldierRoute);
 
 	app.get("/health", (_req, res) => {
@@ -20,10 +24,17 @@ function createApp(client) {
 			await client.db("admin").command({ ping: 1 });
 			return res.status(200).json({ status: "ok" });
 		} catch (err) {
-			logger.error(`error with ${req.path} get request.\n`, err);
-			res.status(500).json({ status: "error", message: err.message });
+			logger.error({url:req.originalUrl, method:req.method},
+				`Error the with request.`,
+				err,
+			);
+			res
+				.status(500)
+				.json({ status: "error", message: "Internal server error" });
 		}
 	});
+
+	app.use(errorHandler);
 
 	return app;
 }
