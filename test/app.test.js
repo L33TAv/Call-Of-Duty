@@ -1,5 +1,5 @@
 import request from "supertest";
-
+import {MongoNetworkError}  from "mongodb";
 import { describe, expect, it } from "vitest";
 
 import createApp from "../src/app.js";
@@ -7,6 +7,8 @@ import createApp from "../src/app.js";
 const mockClient = {
 	db: () => ({
 		command: async () => ({ ok: 1 }),
+		collection: () => ({
+			insertOne: async () => {},
 	}),
 };
 
@@ -14,6 +16,9 @@ const mockBrokenClient = {
 	db: () => ({
 		command: async () => {
 			throw new Error("connection lost");
+		},
+		collection: () => {
+			throw new MongoNetworkError('failed to connect to server [localhost:27017] on first connect');
 		},
 	}),
 };
@@ -38,5 +43,103 @@ describe("checks that health endpoints works correctly", () => {
 		const badResponse = await request(badApp).get("/health/db");
 		expect(badResponse.statusCode).toBe(500);
 		expect(badResponse.body.status).toBe("error");
+	});
+});
+
+describe("check if /soldiers post endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const validSoldier = {
+			_id: "1234567",
+			name: "Liav",
+			rankValue: 0,
+			rankName: "private",
+		};
+		const response = await request(badApp).post("/soldiers").send(validSoldier);
+
+		expect(response.statusCode).toBe(503);
+	});
+
+	const scenarios = [
+		{
+			label: "should return 400 when name is missing",
+			body: { _id: "1234567", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is missing",
+			body: { name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue or rankName is missing",
+			body: { name: "Liav", _id: "1234567" },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 400 when rankName is invalid",
+			body: { name: "Liav", rankName: "Superman", _id: "1234567" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when rankValue is invalid",
+			body: { _id: "1234567", name: "Liav", rankValue: "14" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when limitations format is invalid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankName: "private",
+				limitations: [1],
+			},
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when id is invalid",
+			body: { _id: "1", name: "Liav", rankName: "private" },
+			expectedStatus: 400,
+		},
+		{
+			label: "should return 400 when name is invalid",
+			body: { _id: "1234567", name: "S", rankName: "private" },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 400 when rankName doesnt match rankValue",
+			body: { _id: "1234567", name: "S", rankName: "private", rankValue: 3 },
+			expectedStatus: 400,
+		},
+
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankName: "private" },
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: {
+				_id: "1234567",
+				name: "Liav",
+				rankValue: 1,
+				limitations: ["be nice"],
+			},
+			expectedStatus: 201,
+		},
+		{
+			label: "should return 201 when soldier is valid",
+			body: { _id: "1234567", name: "Liav", rankValue: 0, rankName: "private" },
+			expectedStatus: 201,
+		},
+	];
+
+	scenarios.forEach(({ label, body, expectedStatus }) => {
+		it(label, async () => {
+			const response = await request(app).post("/soldiers").send(body);
+
+			expect(response.statusCode).toBe(expectedStatus);
+		});
 	});
 });
