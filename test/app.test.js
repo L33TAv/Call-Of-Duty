@@ -20,6 +20,11 @@ const mockClient = {
 				if (object._id === "1234567") return { deletedCount: 1 };
 				return { deletedCount: 0 };
 			},
+			updateOne: async (object) => {
+				if (object._id === "0000000") return { modifiedCount: 0 };
+				return { modifiedCount: 1 };
+			},
+		}),
 	}),
 };
 
@@ -238,6 +243,88 @@ describe("check if /soldiers/:id delete endpoint works correctly", () => {
 	it("should return status code 204 when the soldier was deleted", async () => {
 		const response = await request(app).delete(`/soldiers/1234567`);
 		expect(response.statusCode).toBe(204);
+	});
+});
+
+describe("check if /soldiers/:id patch endpoint works correctly", () => {
+	const soldier = {
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+		limitations: ["food"],
+	};
+
+	const soldierChangeId = {
+		_id: "1111111",
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+
+	const unknownSoldier = {
+		name: "sam",
+		rankName: "private",
+		rankValue: 0,
+	};
+
+	const newChangesNotValid = {
+		name: "ariel",
+		rankName: "private",
+		rankValue: 4,
+	};
+
+	const newChangesValid = {
+		name: "ariel",
+		rankName: "private",
+		limitations: ["food"],
+	};
+
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp)
+			.patch("/soldiers/1234567")
+			.send(soldier);
+		expect(response.statusCode).toBe(503);
+	});
+
+	it("should return status code 400 when the soldier parameters aren't valid", async () => {
+		const response = await request(app).patch(`/soldiers/1`).send(soldier);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 400 when the soldier id can't be changed", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldierChangeId);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when the soldier wasn't found", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/0000000`)
+			.send(unknownSoldier);
+		expect(response.statusCode).toBe(404);
+	});
+
+	it("should return status code 400 when the parameters aren't valid - rankName with rankValue", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesNotValid);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 200 when the soldier was patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(soldier);
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 200 when the parameters were patched", async () => {
+		const response = await request(app)
+			.patch(`/soldiers/1234567`)
+			.send(newChangesValid);
+		expect(response.statusCode).toBe(200);
 	});
 });
 

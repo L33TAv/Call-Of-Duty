@@ -72,6 +72,28 @@ function createSoldierRouter(client) {
 			.json({ status: "error", message: "soldier wasn't found" });
 	});
 
+	router.patch("/:id", async (req, res) => {
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+
+		const validatedSoldier = soldierGetSchema.parse(req.body);
+
+		validatedSoldier.updatedAt = new Date();
+
+		const soldierCollection = soldiersRepository(client);
+
+		const patchResponse = await soldierCollection.updateById(
+			validatedSoldierId,
+			validatedSoldier,
+		);
+
+		if (patchResponse.modifiedCount === 1)
+			res.status(200).json({ message: validatedSoldier });
+
+		return res.status(404).json({
+			status: "error",
+			message: "soldier wasn't found or couldn't be changed",
+		});
+	});
 
 	
 	return router;

@@ -16,5 +16,8 @@ export default function soldiersRepository(mongoClient) {
 		async deleteById(idObject) {
 			return collection.deleteOne(idObject);
 		},
+		async updateById(idObject, newSoldier) {
+			return collection.updateOne(idObject, { $set: newSoldier });
+		},
 	};
 }
