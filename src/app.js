@@ -1,4 +1,3 @@
-import createSoldierRouter from "./routes/soldiers.js";
 import express from "express";
 import { getClient } from "./db/client.js";
 import errorHandler from "./middleware/errorHandler.js";
@@ -7,9 +6,6 @@ import soldiersRouter from "./routes/soldiers.js";
 
 export function createApp() {
 	const app = express();
-	const soldierRoute = createSoldierRouter(client);
-	app.use(express.json());
-	app.use("/soldiers", soldierRoute);
 
 	app.use(express.json());
 
