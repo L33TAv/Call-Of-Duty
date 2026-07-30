@@ -57,6 +57,22 @@ function createSoldierRouter(client) {
 		return res.status(200).json(soldiersFound);
 	});
 
+	router.delete("/:id", async (req, res) => {
+		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+
+		const soldierCollection = soldiersRepository(client);
+
+		const deleteResponse =
+			await soldierCollection.deleteById(validatedSoldierId);
+
+		if (deleteResponse.deletedCount === 1) return res.sendStatus(204);
+
+		return res
+			.status(404)
+			.json({ status: "error", message: "soldier wasn't found" });
+	});
+
+
 	
 	return router;
 }

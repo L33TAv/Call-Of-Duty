@@ -13,5 +13,8 @@ export default function soldiersRepository(mongoClient) {
 		async find(filter = {}) {
 			return collection.find(filter).toArray();
 		},
+		async deleteById(idObject) {
+			return collection.deleteOne(idObject);
+		},
 	};
 }
