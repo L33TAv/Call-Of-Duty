@@ -1,7 +1,7 @@
 import express from "express";
 import * as z from "zod";
-import {soldierSchema} from "../schemas/soldiers.js";
 import soldiersRepository from "../db/soldiersDB.js";
+import {soldierSchema,soldierIdSchema} from "../schemas/soldiers.js";
 
 function createSoldierRouter(client) {
 	const router = express.Router();
@@ -17,6 +17,23 @@ function createSoldierRouter(client) {
 			message: validatedSoldier,
 		});
 	});
+
+	router.get("/:id", async (req, res) => {
+		const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
+
+		const soldiersCollection = soldiersRepository(client);
+
+		const soldierInDB = await soldiersCollection.findById(soldierToFind);
+
+		if (soldierInDB) {
+			return res.status(200).json(soldierInDB);
+		}
+
+		return res
+			.status(404)
+			.json({ status: "error", message: "soldier was not found." });
+	});
+
 
 	
 	return router;

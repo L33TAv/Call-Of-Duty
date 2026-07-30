@@ -9,6 +9,10 @@ const mockClient = {
 		command: async () => ({ ok: 1 }),
 		collection: () => ({
 			insertOne: async () => {},
+			findOne: async (soldier) => {
+				if (soldier._id === "1234567") return "exists";
+				return null;
+			},
 	}),
 };
 
@@ -143,3 +147,28 @@ describe("check if /soldiers post endpoint works correctly", () => {
 		});
 	});
 });
+
+describe("check if /soldiers/:id get endpoint works correctly", () => {
+	it("should return 400 when can't connect to db", async () => {
+		const response = await request(badApp).get("/soldiers/1234567");
+
+		expect(response.statusCode).toBe(503);
+	});
+
+	it("should return status code 200 when soldier was found", async () => {
+		const response = await request(app).get(`/soldiers/1234567`);
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	it("should return status code 400 when soldier id isn't valid", async () => {
+		const response = await request(app).get(`/soldiers/notValidId`);
+		expect(response.statusCode).toBe(400);
+	});
+
+	it("should return status code 404 when soldier was not found", async () => {
+		const response = await request(app).get(`/soldiers/1111111`);
+		expect(response.statusCode).toBe(404);
+	});
+});
+

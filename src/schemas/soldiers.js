@@ -44,4 +44,11 @@ const soldierSchema = z
         },
     );
 
-export {soldierSchema};
+const soldierIdSchema = z.object({
+    _id: z
+        .string()
+        .regex(/^\d+$/, { message: "the id must contain only numbers." })
+        .length(7),
+});
+
+export {soldierSchema,soldierIdSchema};

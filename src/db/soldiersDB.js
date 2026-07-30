@@ -7,5 +7,8 @@ export default function soldiersRepository(mongoClient) {
 			soldier.updatedAt = new Date();
 			return collection.insertOne(soldier);
 		},
+		async findById(idObject) {
+			return collection.findOne(idObject);
+		},
 	};
 }
