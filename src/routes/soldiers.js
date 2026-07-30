@@ -1,7 +1,7 @@
 import express from "express";
 import * as z from "zod";
 import soldiersRepository from "../db/soldiersDB.js";
-import {soldierSchema,soldierIdSchema} from "../schemas/soldiers.js";
+import {soldierSchema,soldierIdSchema,soldierGetSchema} from "../schemas/soldiers.js";
 
 function createSoldierRouter(client) {
 	const router = express.Router();
@@ -34,6 +34,28 @@ function createSoldierRouter(client) {
 			.json({ status: "error", message: "soldier was not found." });
 	});
 
+	router.get("/", async (req, res) => {
+		let limitations = req.query.limitations
+			?.split(",")
+			?.filter((item) => item.trim() !== "");
+		if (limitations?.length === 0) limitations = undefined;
+
+		const validatedSearch = soldierGetSchema.parse({
+			...req.query,
+			limitations,
+		});
+
+		const filter = Object.fromEntries(
+			Object.entries(validatedSearch).filter(
+				([_key, value]) => value !== undefined && value !== null,
+			),
+		);
+
+		const soldierCollection = soldiersRepository(client);
+		const soldiersFound = await soldierCollection.find(filter);
+
+		return res.status(200).json(soldiersFound);
+	});
 
 	
 	return router;

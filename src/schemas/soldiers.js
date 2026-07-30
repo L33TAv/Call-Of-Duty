@@ -51,4 +51,34 @@ const soldierIdSchema = z.object({
         .length(7),
 });
 
-export {soldierSchema,soldierIdSchema};
+const soldierGetSchema = z
+    .object({
+        name: z.string().min(3).max(50).optional(),
+        rankValue: z.coerce.number().gte(0).lte(6).optional(),
+        rankName: z.string().optional(),
+        limitations: z.array(z.string()).optional(),
+    })
+    .strict()
+    .refine(
+        (data) => {
+            const rankValue = data.rankValue;
+            const rankName = data.rankName;
+
+            if (
+                rankValue !== null &&
+                rankValue !== undefined &&
+                rankName !== null &&
+                rankName !== undefined
+            )
+                return RANK_NAMES[rankValue] === rankName;
+            else if (rankName !== null && rankName !== undefined)
+                return Object.values(RANK_NAMES).includes(rankName);
+            return true;
+        },
+        {
+            error: "rankName or rankValue doesn't match the requirements.",
+        },
+    );
+
+
+export {soldierSchema,soldierIdSchema,soldierGetSchema};
