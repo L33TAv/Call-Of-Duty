@@ -14,7 +14,7 @@ async function start() {
 		const app = createApp(client);
 
 		const server = app.listen(PORT, () => {
-			 logger.info(`Server is running on port ${PORT}`);
+			logger.info(`Server is running on port ${PORT}`);
 		});
 
 		process.on("SIGTERM", () => shutdown("SIGTERM", server));

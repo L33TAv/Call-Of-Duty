@@ -1,7 +1,11 @@
 import express from "express";
-import * as z from "zod";
 import soldiersRepository from "../db/soldiersDB.js";
-import {soldierSchema,soldierIdSchema,soldierLimitationSchema,soldierGetSchema} from "../schemas/soldiers.js";
+import {
+	soldierGetSchema,
+	soldierIdSchema,
+	soldierLimitationSchema,
+	soldierSchema,
+} from "../schemas/soldiers.js";
 
 function createSoldierRouter(client) {
 	const router = express.Router();

@@ -1,11 +1,12 @@
 import { pino } from "pino";
 import config from "../config.js";
 
-const logger  = pino({ level: config.logLevel });
-const loggerMiddelware  = (req, res, next) => {
+const logger = pino({ level: config.logLevel });
+const loggerMiddleware = (req, res, next) => {
 	res.on("finish", () => {
 		if (res.statusCode < 400) {
-			logger.info({url:req.originalUrl,method:req.method,status:res.statusCode},
+			logger.info(
+				{ url: req.originalUrl, method: req.method, status: res.statusCode },
 				`Request was successful.`,
 			);
 		}
@@ -16,4 +17,4 @@ const loggerMiddelware  = (req, res, next) => {
 	return;
 };
 
-export { logger, loggerMiddelware  };
+export { logger, loggerMiddleware };
