@@ -1,5 +1,5 @@
 import express from "express";
-import soldiersRepository from "../db/soldiersDB.js";
+import * as soldiersRepository from "../db/soldiersDB.js";
 import {
 	soldierGetSchema,
 	soldierIdSchema,
@@ -7,15 +7,13 @@ import {
 	soldierSchema,
 } from "../schemas/soldiers.js";
 
-function createSoldierRouter(client) {
+function createSoldierRouter() {
 	const router = express.Router();
 
 	router.post("/", async (req, res) => {
 		const validatedSoldier = soldierSchema.parse(req.body);
 
-		const soldiersCollection = soldiersRepository(client);
-
-		await soldiersCollection.insertOne(validatedSoldier);
+		await soldiersRepository.insertOne(validatedSoldier);
 
 		return res.status(201).json({
 			message: validatedSoldier,
@@ -25,9 +23,7 @@ function createSoldierRouter(client) {
 	router.get("/:id", async (req, res) => {
 		const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
 
-		const soldiersCollection = soldiersRepository(client);
-
-		const soldierInDB = await soldiersCollection.findById(soldierToFind);
+		const soldierInDB = await soldiersRepository.findById(soldierToFind);
 
 		if (soldierInDB) {
 			return res.status(200).json(soldierInDB);
@@ -55,8 +51,7 @@ function createSoldierRouter(client) {
 			),
 		);
 
-		const soldierCollection = soldiersRepository(client);
-		const soldiersFound = await soldierCollection.find(filter);
+		const soldiersFound = await soldiersRepository.find(filter);
 
 		return res.status(200).json(soldiersFound);
 	});
@@ -64,10 +59,8 @@ function createSoldierRouter(client) {
 	router.delete("/:id", async (req, res) => {
 		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
 
-		const soldierCollection = soldiersRepository(client);
-
 		const deleteResponse =
-			await soldierCollection.deleteById(validatedSoldierId);
+			await soldiersRepository.deleteById(validatedSoldierId);
 
 		if (deleteResponse.deletedCount === 1) return res.sendStatus(204);
 
@@ -83,9 +76,7 @@ function createSoldierRouter(client) {
 
 		validatedSoldier.updatedAt = new Date();
 
-		const soldierCollection = soldiersRepository(client);
-
-		const patchResponse = await soldierCollection.updateById(
+		const patchResponse = await soldiersRepository.updateById(
 			validatedSoldierId,
 			validatedSoldier,
 		);
@@ -104,9 +95,7 @@ function createSoldierRouter(client) {
 		const newLimitations = soldierLimitationSchema.parse(req.body);
 		const updatedAt = { updatedAt: new Date() };
 
-		const soldierCollection = soldiersRepository(client);
-
-		const patchResponse = await soldierCollection.updateLimitationsById(
+		const patchResponse = await soldiersRepository.updateLimitationsById(
 			validatedSoldierId,
 			newLimitations,
 			updatedAt,

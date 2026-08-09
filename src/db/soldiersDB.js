@@ -1,29 +1,30 @@
-export default function soldiersRepository(mongoClient) {
-	const collection = mongoClient.db("call-of-duty").collection("soldiers");
+import { getDb } from "./client.js";
 
-	return {
-		async insertOne(soldier) {
-			soldier.createdAt = new Date();
-			soldier.updatedAt = new Date();
-			return collection.insertOne(soldier);
-		},
-		async findById(idObject) {
-			return collection.findOne(idObject);
-		},
-		async find(filter = {}) {
-			return collection.find(filter).toArray();
-		},
-		async deleteById(idObject) {
-			return collection.deleteOne(idObject);
-		},
-		async updateById(idObject, newSoldier) {
-			return collection.updateOne(idObject, { $set: newSoldier });
-		},
-		async updateLimitationsById(idObject, limitations, updatedAt) {
-			return collection.updateOne(idObject, {
-				$addToSet: { limitations: { $each: limitations.limitations } },
-				$set: updatedAt,
-			});
-		},
-	};
+export const soldiersCollection = () => {
+	return getDb().collection("soldiers");
+};
+
+export async function insertOne(soldier) {
+	soldier.createdAt = new Date();
+	soldier.updatedAt = new Date();
+	return soldiersCollection().insertOne(soldier);
+}
+
+export async function findById(idObject) {
+	return soldiersCollection().findOne(idObject);
+}
+export async function find(filter = {}) {
+	return soldiersCollection().find(filter).toArray();
+}
+export async function deleteById(idObject) {
+	return soldiersCollection().deleteOne(idObject);
+}
+export async function updateById(idObject, newSoldier) {
+	return soldiersCollection().updateOne(idObject, { $set: newSoldier });
+}
+export async function updateLimitationsById(idObject, limitations, updatedAt) {
+	return soldiersCollection().updateOne(idObject, {
+		$addToSet: { limitations: { $each: limitations.limitations } },
+		$set: updatedAt,
+	});
 }

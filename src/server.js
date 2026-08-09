@@ -1,17 +1,17 @@
-import { MongoClient } from "mongodb";
 import createApp from "./app.js";
 import config from "./config.js";
+import { connectClient } from "./db/client.js";
 import { logger } from "./middleware/logger.js";
-
-const client = new MongoClient(config.mongoURI);
 
 const PORT = config.port;
 
+let client;
+
 async function start() {
 	try {
-		await client.connect();
+		client = await connectClient();
 
-		const app = createApp(client);
+		const app = createApp();
 
 		const server = app.listen(PORT, () => {
 			logger.info(`Server is running on port ${PORT}`);
