@@ -9,13 +9,13 @@ import {
 	it,
 	vi,
 } from "vitest";
-import createApp from "../src/app.js";
-import * as client from "../src/db/client.js";
+import { createApp } from "../src/app.js";
+import * as clientDB from "../src/db/client.js";
 
 const app = createApp();
 
 beforeAll(async () => {
-	await client.connectClient();
+	await clientDB.connectClient();
 });
 
 afterEach(() => {
@@ -23,10 +23,7 @@ afterEach(() => {
 });
 
 afterAll(async () => {
-	await client.getDb().dropDatabase();
-
-	const mongoClient = await client.connectClient();
-	await mongoClient.close();
+	await clientDB.closeDb();
 });
 
 describe("Test health endpoints", () => {
@@ -43,7 +40,7 @@ describe("Test health endpoints", () => {
 	});
 
 	it("should return status code 500 when fails to ping GET /health/db", async () => {
-		vi.spyOn(client, "connectClient").mockRejectedValue({
+		vi.spyOn(clientDB, "getClient").mockRejectedValue({
 			db: () => ({
 				command: async () => {
 					throw new MongoNetworkError(
@@ -53,8 +50,8 @@ describe("Test health endpoints", () => {
 			}),
 		});
 
-		const badResponse = await request(app).get("/health/db");
-		expect(badResponse.statusCode).toBe(500);
-		expect(badResponse.body.status).toBe("error");
+		const response = await request(app).get("/health/db");
+		expect(response.statusCode).toBe(500);
+		expect(response.body.status).toBe("error");
 	});
 });

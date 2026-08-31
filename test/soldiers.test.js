@@ -1,364 +1,809 @@
 import { MongoNetworkError } from "mongodb";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
+import { createApp } from "../src/app.js";
+import * as clientDB from "../src/db/client.js";
+import * as soldiersRepository from "../src/db/soldiersDB.js";
 
-import createApp from "../src/app.js";
+let idCounter = "1111111";
+function createSoldierBody(override = {}) {
+	const body = {
+		name: "bobi",
+		_id: idCounter.toString(),
+		rankName: "private",
+	};
 
-const mockClient = {
-	db: () => ({
-		collection: () => ({
-			insertOne: async () => {},
-			findOne: async (soldier) => {
-				if (soldier._id === "1234567") return "exists";
-				return null;
-			},
-			find: () => ({
-				toArray: async () => [{}],
-			}),
-			deleteOne: async (object) => {
-				if (object._id === "1234567") return { deletedCount: 1 };
-				return { deletedCount: 0 };
-			},
-			updateOne: async (object) => {
-				if (object._id === "0000000") return { modifiedCount: 0 };
-				return { modifiedCount: 1 };
-			},
-		}),
-	}),
-};
+	idCounter++;
 
-const mockBrokenClient = {
-	db: () => ({
-		collection: () => {
-			throw new MongoNetworkError(
-				"failed to connect to server [localhost:27017] on first connect",
-			);
-		},
-	}),
-};
+	return { ...body, ...override };
+}
 
-const app = createApp(mockClient);
-const badApp = createApp(mockBrokenClient);
+function createScenario(label, body = {}, expectedIssue) {
+	const override = createSoldierBody(body);
+	return { label, body: override, expectedIssue };
+}
+
+const app = createApp();
+
+beforeAll(async () => {
+	await clientDB.connectClient();
+});
+
+beforeEach(async () => {
+	await soldiersRepository.soldiersCollection().deleteMany({});
+});
+
+afterEach(async () => {
+	vi.restoreAllMocks();
+	await soldiersRepository.soldiersCollection().deleteMany({});
+});
+
+afterAll(async () => {
+	await clientDB.closeDb();
+});
 
 describe("Test /soldiers endpoints", () => {
 	describe("Test POST /soldiers endpoint", () => {
-		it("should return 400 when can't connect to db", async () => {
-			const validSoldier = {
-				_id: "1234567",
-				name: "Liav",
-				rankValue: 0,
-				rankName: "private",
-			};
-			const response = await request(badApp)
-				.post("/soldiers")
-				.send(validSoldier);
+		it("should return 201 when soldier is valid", async () => {
+			const body = createSoldierBody();
 
-			expect(response.statusCode).toBe(503);
+			const response = await request(app).post("/soldiers").send(body);
+
+			expect(response.statusCode).toBe(201);
+			expect(response.body.message).toMatchObject(body);
+			expect(response.body.message).toHaveProperty("createdAt");
+			expect(response.body.message).toHaveProperty("updatedAt");
 		});
 
-		const scenarios = [
-			{
-				label: "should return 400 when name is missing",
-				body: { _id: "1234567", rankName: "private" },
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when id is missing",
-				body: { name: "Liav", rankName: "private" },
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when rankValue or rankName is missing",
-				body: { name: "Liav", _id: "1234567" },
-				expectedStatus: 400,
-			},
+		it("should return 201 when soldier is valid - with limitations", async () => {
+			const body = createSoldierBody({ limitations: ["rest"] });
 
-			{
-				label: "should return 400 when rankName is invalid",
-				body: { name: "Liav", rankName: "Superman", _id: "1234567" },
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when rankValue is invalid",
-				body: { _id: "1234567", name: "Liav", rankValue: "14" },
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when limitations format is invalid",
-				body: {
-					_id: "1234567",
-					name: "Liav",
-					rankName: "private",
-					limitations: [1],
-				},
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when id is invalid",
-				body: { _id: "1", name: "Liav", rankName: "private" },
-				expectedStatus: 400,
-			},
-			{
-				label: "should return 400 when name is invalid",
-				body: { _id: "1234567", name: "S", rankName: "private" },
-				expectedStatus: 400,
-			},
+			const response = await request(app).post("/soldiers").send(body);
 
-			{
-				label: "should return 400 when rankName doesnt match rankValue",
-				body: { _id: "1234567", name: "S", rankName: "private", rankValue: 3 },
-				expectedStatus: 400,
-			},
+			expect(response.statusCode).toBe(201);
+			expect(response.body.message).toMatchObject(body);
+			expect(response.body.message).toHaveProperty("createdAt");
+			expect(response.body.message).toHaveProperty("updatedAt");
+		});
 
-			{
-				label: "should return 201 when soldier is valid",
-				body: { _id: "1234567", name: "Liav", rankName: "private" },
-				expectedStatus: 201,
-			},
-			{
-				label: "should return 201 when soldier is valid",
-				body: {
-					_id: "1234567",
-					name: "Liav",
-					rankValue: 1,
-					limitations: ["be nice"],
-				},
-				expectedStatus: 201,
-			},
-			{
-				label: "should return 201 when soldier is valid",
-				body: {
-					_id: "1234567",
-					name: "Liav",
-					rankValue: 0,
-					rankName: "private",
-				},
-				expectedStatus: 201,
-			},
+		it("should return 500 when an unexpected error occurs", async () => {
+			const validSoldier = createSoldierBody();
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => ({
+					insertOne: () => {
+						throw new Error("something unexpected happened");
+					},
+				}),
+			});
+
+			const response = await request(app).post("/soldiers").send(validSoldier);
+
+			expect(response.statusCode).toBe(500);
+			expect(response.body.status).toBe("error");
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => ({
+					insertOne: () => {
+						throw new MongoNetworkError(
+							"failed to connect to server on first connect",
+						);
+					},
+				}),
+			});
+
+			const response = await request(app).post("/soldiers").send(validSoldier);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+		});
+
+		const badScenarios = [
+			createScenario("_id is missing", { _id: undefined }, "_id"),
+			createScenario("name is missing", { name: undefined }, "name"),
+			createScenario(
+				"rankValue/rankName is missing",
+				{ rankName: undefined, rankValue: undefined },
+				"rankName or rankValue",
+			),
+			createScenario("rankValue is invalid", { rankValue: 14 }, "rankValue"),
+			createScenario("name is invalid", { name: "n" }, "name"),
+			createScenario("id is invalid", { _id: "not a valid Id" }, "_id"),
+			createScenario(
+				"limitations are invalid - not a string",
+				{ limitations: [1, 12, 3] },
+				"limitations",
+			),
+			createScenario(
+				"limitations are invalid - duplicate limitations",
+				{ limitations: ["food", "FOOD"] },
+				"limitations",
+			),
+			createScenario(
+				"rank value doesn't match rank name",
+				{ rankName: "private", rankValue: 4 },
+				"rankName or rankValue",
+			),
+			createScenario(
+				"rank name isn't valid",
+				{ rankName: "not a real rank" },
+				"rankName or rankValue",
+			),
 		];
 
-		scenarios.forEach(({ label, body, expectedStatus }) => {
-			it(label, async () => {
-				const response = await request(app).post("/soldiers").send(body);
+		it.each(badScenarios)("should return 400 when $label", async ({
+			label,
+			body,
+			expectedIssue,
+		}) => {
+			const response = await request(app).post("/soldiers").send(body);
 
-				expect(response.statusCode).toBe(expectedStatus);
-			});
+			expect(response.statusCode).toBe(400);
+
+			if (expectedIssue) {
+				expect(response.body.issues).toContain(expectedIssue);
+			}
+		});
+
+		it("should return 409 when posting duplicate soldier", async () => {
+			const body = createSoldierBody();
+
+			await request(app).post("/soldiers").send(body);
+			const response = await request(app).post("/soldiers").send(body);
+
+			expect(response.statusCode).toBe(409);
+			expect(response.body.message).toBe("soldier already exists");
 		});
 	});
 
 	describe("Test GET /soldiers/:id endpoint", () => {
-		it("should return 400 when can't connect to db", async () => {
-			const response = await request(badApp).get("/soldiers/1234567");
+		it("should return 200 when soldier found", async () => {
+			const validSoldier = createSoldierBody();
 
-			expect(response.statusCode).toBe(503);
-		});
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
 
-		it("should return status code 200 when soldier was found", async () => {
-			const response = await request(app).get(`/soldiers/1234567`);
+			const response = await request(app).get(`/soldiers/${validSoldier._id}`);
 
 			expect(response.statusCode).toBe(200);
+
+			expect(response.body).toMatchObject(validSoldier);
+			expect(response.body).toHaveProperty("createdAt");
+			expect(response.body).toHaveProperty("updatedAt");
 		});
 
-		it("should return status code 400 when soldier id isn't valid", async () => {
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			});
+
+			const response = await request(app).get(`/soldiers/${validSoldier._id}`);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 400 when id isn't valid - not a number", async () => {
+			const validSoldier = createSoldierBody();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app).get(`/soldiers/notValidId`);
 			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"the id must contain only numbers.",
+			);
 		});
 
-		it("should return status code 404 when soldier was not found", async () => {
-			const response = await request(app).get(`/soldiers/1111111`);
+		it("should return 400 when id isn't valid - length", async () => {
+			const validSoldier = createSoldierBody();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app).get(`/soldiers/1234`);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 404 when soldier not found", async () => {
+			const response = await request(app).get(`/soldiers/0000000`);
+
 			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("soldier was not found.");
 		});
 	});
 
-	describe("Test GET /soldiers/ endpoint", () => {
-		it("should return 400 when can't connect to db", async () => {
-			const response = await request(badApp).get("/soldiers");
-			expect(response.statusCode).toBe(503);
-		});
+	describe("Test GET /soldiers endpoint", () => {
+		it("should return status code 200 when soldier search is valid", async () => {
+			const validSoldier = createSoldierBody();
+			const validSoldier2 = createSoldierBody();
 
-		it("should return status code 400 when soldier isn't valid - name length", async () => {
-			const response = await request(app).get(`/soldiers?name=a`);
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
 
-			expect(response.statusCode).toBe(400);
-		});
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier2,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
 
-		it("should return status code 400 when soldier isn't valid - rankValue isn't a number", async () => {
-			const response = await request(app).get(`/soldiers?rankValue=a`);
+			const response = await request(app).get(
+				`/soldiers?name=${validSoldier.name}`,
+			);
 
-			expect(response.statusCode).toBe(400);
-		});
-
-		it("should return status code 400 when soldier isn't valid - property doesn't exist", async () => {
-			const response = await request(app).get(`/soldiers?randomProperty=abc`);
-
-			expect(response.statusCode).toBe(400);
-		});
-
-		it("should return status code 200 when soldier is valid", async () => {
-			const response = await request(app).get(`/soldiers?name=sam`);
 			expect(response.statusCode).toBe(200);
+
+			expect(response.body.length).toBe(2);
+
+			expect(response.body).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: validSoldier.name,
+					}),
+				]),
+			);
 		});
 
 		it("should return status code 200 when an empty limitations are given", async () => {
+			const validSoldier = createSoldierBody({ limitations: [] });
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app).get(`/soldiers?limitations=`);
+
 			expect(response.statusCode).toBe(200);
+
+			expect(response.body.length).toBe(1);
+
+			expect(response.body).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						limitations: [],
+					}),
+				]),
+			);
 		});
 
 		it("should return status code 200 when no soldier attributes are given", async () => {
+			const validSoldier = createSoldierBody({});
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app).get(`/soldiers`);
+
 			expect(response.statusCode).toBe(200);
+
+			expect(response.body.length).toBe(1);
+
+			expect(response.body).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						...validSoldier,
+					}),
+				]),
+			);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			});
+
+			const response = await request(app).get(`/soldiers/?rankValue=3`);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 400 when search using _id", async () => {
+			const response = await request(app).get(`/soldiers?_id=1234567`);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain("_id");
+		});
+
+		it("should return 400 when search using invalid rankName", async () => {
+			const response = await request(app).get(`/soldiers?rankName=1`);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain("rankName");
+		});
+
+		it("should return 400 when search using duplicate limitations", async () => {
+			const response = await request(app).get(`/soldiers?limitations=a,a`);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain("limitations");
+		});
+
+		it("should return 400 when search using unmatched rankName and rankValue", async () => {
+			const response = await request(app).get(
+				`/soldiers?rankName=private,rankValue=3`,
+			);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain("rankName");
+			expect(response.body.issues).toContain("rankValue");
 		});
 	});
 
 	describe("Test DELETE /soldiers/:id endpoint", () => {
-		it("should return 400 when can't connect to db", async () => {
-			const response = await request(badApp).delete("/soldiers/1234567");
-			expect(response.statusCode).toBe(503);
-		});
+		it("should return 204 when soldier was deleted", async () => {
+			const validSoldier = createSoldierBody();
 
-		it("should return status code 400 when the soldier parameters aren't valid", async () => {
-			const response = await request(app).delete(`/soldiers/1`);
-			expect(response.statusCode).toBe(400);
-		});
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
 
-		it("should return status code 404 when the soldier wasn't found", async () => {
-			const response = await request(app).delete(`/soldiers/0000000`);
-			expect(response.statusCode).toBe(404);
-		});
+			const response = await request(app).delete(
+				`/soldiers/${validSoldier._id}`,
+			);
 
-		it("should return status code 204 when the soldier was deleted", async () => {
-			const response = await request(app).delete(`/soldiers/1234567`);
+			const soldierInDB = await soldiersRepository
+				.soldiersCollection()
+				.findOne({ _id: validSoldier._id });
+
 			expect(response.statusCode).toBe(204);
+			expect(soldierInDB).toBe(null);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			});
+
+			const response = await request(app).delete(
+				`/soldiers/${validSoldier._id}`,
+			);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 404 when soldier was not found", async () => {
+			const response = await request(app).delete(`/soldiers/0000000`);
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("");
+			expect(response.body.status).toBe("error");
+		});
+
+		it("should return 400 when  the soldier id isn't valid - length", async () => {
+			const response = await request(app).delete(`/soldiers/1`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 400 when  the soldier id isn't valid - not a number", async () => {
+			const response = await request(app).delete(`/soldiers/notValidId`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"the id must contain only numbers.",
+			);
 		});
 	});
 
 	describe("Test PATCH /soldiers/:id endpoint", () => {
-		const soldier = {
-			name: "sam",
-			rankName: "private",
-			rankValue: 0,
-			limitations: ["food"],
-		};
+		it("should return status code 200 when the soldier was patched", async () => {
+			const validSoldier = createSoldierBody();
+			const newPatch = { name: "patrick", limitations: "food" };
 
-		const soldierChangeId = {
-			_id: "1111111",
-			name: "sam",
-			rankName: "private",
-			rankValue: 0,
-		};
+			const updatedAt = new Date();
 
-		const unknownSoldier = {
-			name: "sam",
-			rankName: "private",
-			rankValue: 0,
-		};
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt,
+			});
 
-		const newChangesNotValid = {
-			name: "ariel",
-			rankName: "private",
-			rankValue: 4,
-		};
-
-		const newChangesValid = {
-			name: "ariel",
-			rankName: "private",
-			limitations: ["food"],
-		};
-
-		it("should return 400 when can't connect to db", async () => {
-			const response = await request(badApp)
-				.patch("/soldiers/1234567")
-				.send(soldier);
-			expect(response.statusCode).toBe(503);
-		});
-
-		it("should return status code 400 when the soldier parameters aren't valid", async () => {
-			const response = await request(app).patch(`/soldiers/1`).send(soldier);
-			expect(response.statusCode).toBe(400);
-		});
-
-		it("should return status code 400 when the soldier id can't be changed", async () => {
 			const response = await request(app)
-				.patch(`/soldiers/1234567`)
-				.send(soldierChangeId);
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.message._id).toBe(validSoldier._id);
+			expect(response.body.message.name).toBe(newPatch.name);
+			expect(response.body.message.limitations).toContain(newPatch.limitations);
+			expect(response.body.message.updatedAt).not.toBe(updatedAt);
+		});
+
+		it("should return status code 200 when the soldier was patched - with patching existing limitations and limitations as an array", async () => {
+			const validSoldier = createSoldierBody({ limitations: ["food"] });
+			const newPatch = { name: "patrick", limitations: ["food", "water"] };
+
+			const updatedAt = new Date();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt,
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.message._id).toBe(validSoldier._id);
+			expect(response.body.message.name).toBe(newPatch.name);
+			expect(response.body.message.limitations).toEqual(
+				expect.arrayContaining(newPatch.limitations),
+			);
+			expect(response.body.message.updatedAt).not.toBe(updatedAt);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+			const newPatch = { name: "bobi" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return status code 400 when the soldier id isn't valid - length", async () => {
+			const newPatch = { name: "sam" };
+			const response = await request(app)
+				.patch(`/soldiers/1234`)
+				.send(newPatch);
 
 			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return status code 400 when the soldier id id can't be changed", async () => {
+			const validSoldier = createSoldierBody();
+			const newPatch = { _id: "1234567" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+			expect(response.body.issues).toContain("Unrecognized key");
+		});
+
+		it("should return status code 400 when the parameters aren't valid - unknown property", async () => {
+			const validSoldier = createSoldierBody();
+			const newPatch = { notRealProperty: "avocado" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("Unrecognized key");
+		});
+
+		it("should return status code 400 when the parameters aren't valid - name", async () => {
+			const validSoldier = createSoldierBody();
+			const newPatch = { name: "a" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}`)
+				.send(newPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("name");
 		});
 
 		it("should return status code 404 when the soldier wasn't found", async () => {
+			const newPatch = { name: "sandy" };
+
 			const response = await request(app)
-				.patch(`/soldiers/0000000`)
-				.send(unknownSoldier);
+				.patch(`/soldiers/9999999`)
+				.send(newPatch);
+
 			expect(response.statusCode).toBe(404);
-		});
-
-		it("should return status code 400 when the parameters aren't valid - rankName with rankValue", async () => {
-			const response = await request(app)
-				.patch(`/soldiers/1234567`)
-				.send(newChangesNotValid);
-			expect(response.statusCode).toBe(400);
-		});
-
-		it("should return status code 200 when the soldier was patched", async () => {
-			const response = await request(app)
-				.patch(`/soldiers/1234567`)
-				.send(soldier);
-			expect(response.statusCode).toBe(200);
-		});
-
-		it("should return status code 200 when the parameters were patched", async () => {
-			const response = await request(app)
-				.patch(`/soldiers/1234567`)
-				.send(newChangesValid);
-			expect(response.statusCode).toBe(200);
+			expect(response.body.message).toBe(
+				"soldier wasn't found or couldn't be changed",
+			);
 		});
 	});
 
-	describe("Test PATCH /soldiers/:id/limitations endpoint", () => {
-		const limitations = { limitations: ["food", "money"] };
-		const badLimitations = { limitations: [1, "money"] };
+	describe("check if /soldiers/:id/limitations patch endpoint works correctly", () => {
+		it("should return 200 when soldier limitations patched", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: ["food", "walking"] };
 
-		it("should return 400 when can't connect to db", async () => {
-			const response = await request(badApp)
-				.patch("/soldiers/1234567/limitations")
-				.send(limitations);
+			const updatedAt = new Date();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt,
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
+			expect(response.statusCode).toBe(200);
+
+			expect(response.body.message._id).toBe(validSoldier._id);
+			expect(response.body.message.limitations).toEqual(
+				expect.arrayContaining(newLimitations.limitations),
+			);
+			expect(response.body.message.updatedAt).not.toBe(updatedAt);
+		});
+
+		it("should return 200 when soldier limitations patched - patching existing limitations", async () => {
+			const validSoldier = createSoldierBody({ limitations: ["walking"] });
+			const newLimitations = { limitations: ["food", "walking"] };
+
+			const updatedAt = new Date();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt,
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
+			expect(response.statusCode).toBe(200);
+
+			expect(response.body.message._id).toBe(validSoldier._id);
+			expect(response.body.message.limitations).toEqual(
+				expect.arrayContaining(newLimitations.limitations),
+			);
+			expect(response.body.message.updatedAt).not.toBe(updatedAt);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: ["food"] };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			vi.spyOn(clientDB, "getDb").mockReturnValue({
+				collection: () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
 			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
 		});
 
 		it("should return status code 400 when the limitations aren't valid - using numbers", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: [1, "walking"] };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app)
-				.patch(`/soldiers/1234567/limitations`)
-				.send(badLimitations);
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
 			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("limitations");
+			expect(response.body.issues).toContain("number");
 		});
 
-		it("should return status code 400 when the limitations aren't valid - empty object", async () => {
+		it("should return status code 400 when the limitations aren't valid - not an array", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: "water" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app)
-				.patch(`/soldiers/1234567/limitations`)
-				.send({});
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
 			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("limitations");
+			expect(response.body.issues).toContain("array");
 		});
 
-		it("should return status code 400 when the soldier id isn't valid", async () => {
+		it("should return status code 400 when the limitations aren't valid - empty limitations", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: "" };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
 			const response = await request(app)
-				.patch(`/soldiers/1/limitations`)
-				.send(limitations);
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("limitations");
+			expect(response.body.issues).toContain("string");
+		});
+
+		it("should return status code 400 when the limitations aren't valid - duplicate limitations", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: ["water", "water"] };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldier._id}/limitations`)
+				.send(newLimitations);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("limitations");
+			expect(response.body.issues).toContain("duplicate");
+		});
+
+		it("should return status code 400 when the id isn't valid", async () => {
+			const validSoldier = createSoldierBody();
+			const newLimitations = { limitations: ["water", "water"] };
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldier,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/notValidId/limitations`)
+				.send(newLimitations);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
 		});
 
 		it("should return status code 404 when the soldier wasn't found", async () => {
-			const response = await request(app)
-				.patch(`/soldiers/0000000/limitations`)
-				.send(limitations);
-			expect(response.statusCode).toBe(404);
-		});
+			const newLimitations = { limitations: ["water", "food"] };
 
-		it("should return status code 200 when the soldier was patched", async () => {
 			const response = await request(app)
 				.patch(`/soldiers/1234567/limitations`)
-				.send(limitations);
-			expect(response.statusCode).toBe(200);
+				.send(newLimitations);
+
+			expect(response.statusCode).toBe(404);
+
+			expect(response.body.message).toBe(
+				"soldier wasn't found or couldn't be changed",
+			);
 		});
 	});
 });
