@@ -7,6 +7,7 @@ export const soldiersCollection = () => {
 export async function insertOne(soldier) {
 	soldier.createdAt = new Date();
 	soldier.updatedAt = new Date();
+
 	return soldiersCollection().insertOne(soldier);
 }
 
@@ -20,11 +21,12 @@ export async function deleteById(idObject) {
 	return soldiersCollection().deleteOne(idObject);
 }
 export async function updateById(idObject, newSoldier) {
+	newSoldier.updatedAt = new Date();
 	return soldiersCollection().updateOne(idObject, { $set: newSoldier });
 }
-export async function updateLimitationsById(idObject, limitations, updatedAt) {
+export async function updateLimitationsById(idObject, limitations) {
 	return soldiersCollection().updateOne(idObject, {
 		$addToSet: { limitations: { $each: limitations.limitations } },
-		$set: updatedAt,
+		$set: { updatedAt: new Date() },
 	});
 }

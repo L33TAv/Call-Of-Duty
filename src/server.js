@@ -1,15 +1,13 @@
-import createApp from "./app.js";
+import { createApp } from "./app.js";
 import config from "./config.js";
-import { connectClient } from "./db/client.js";
+import { closeDb, connectClient } from "./db/client.js";
 import { logger } from "./middleware/logger.js";
 
 const PORT = config.port;
 
-let client;
-
 async function start() {
 	try {
-		client = await connectClient();
+		await connectClient();
 
 		const app = createApp();
 
@@ -37,7 +35,7 @@ async function shutdown(signal, server) {
 			});
 		});
 
-		await client.close();
+		await closeDb();
 		logger.info("MongoDB connection closed");
 
 		process.exitCode = 0;

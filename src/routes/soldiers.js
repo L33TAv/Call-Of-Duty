@@ -1,52 +1,51 @@
 import express from "express";
 import * as soldiersRepository from "../db/soldiersDB.js";
+import { validate } from "../middleware/validate.js";
 import {
-	soldierGetSchema,
 	soldierIdSchema,
 	soldierLimitationSchema,
+	soldierQuerySchema,
 	soldierSchema,
 } from "../schemas/soldiers.js";
 
-function createSoldierRouter() {
-	const router = express.Router();
+const soldiersRouter = express.Router();
 
-	router.post("/", async (req, res) => {
-		const validatedSoldier = soldierSchema.parse(req.body);
-
-		await soldiersRepository.insertOne(validatedSoldier);
+soldiersRouter.post(
+	"/",
+	validate({ body: soldierSchema }),
+	async (req, res) => {
+		const newSoldier = req.validatedBody;
+		await soldiersRepository.insertOne(newSoldier);
 
 		return res.status(201).json({
-			message: validatedSoldier,
+			message: newSoldier,
 		});
-	});
+	},
+);
 
-	router.get("/:id", async (req, res) => {
-		const soldierToFind = soldierIdSchema.parse({ _id: req.params.id });
+soldiersRouter.get(
+	"/:id",
+	validate({ params: soldierIdSchema }),
+	async (req, res) => {
+		const soldierId = { _id: req.validatedParams.id };
+		const soldierInDB = await soldiersRepository.findById(soldierId);
 
-		const soldierInDB = await soldiersRepository.findById(soldierToFind);
-
-		if (soldierInDB) {
-			return res.status(200).json(soldierInDB);
+		if (!soldierInDB) {
+			return res
+				.status(404)
+				.json({ status: "error", message: "soldier was not found." });
 		}
+		return res.status(200).json(soldierInDB);
+	},
+);
 
-		return res
-			.status(404)
-			.json({ status: "error", message: "soldier was not found." });
-	});
-
-	router.get("/", async (req, res) => {
-		let limitations = req.query.limitations
-			?.split(",")
-			?.filter((item) => item.trim() !== "");
-		if (limitations?.length === 0) limitations = undefined;
-
-		const validatedSearch = soldierGetSchema.parse({
-			...req.query,
-			limitations,
-		});
-
+soldiersRouter.get(
+	"/",
+	validate({ query: soldierQuerySchema }),
+	async (req, res) => {
+		const soldierQuery = req.validatedQuery;
 		const filter = Object.fromEntries(
-			Object.entries(validatedSearch).filter(
+			Object.entries(soldierQuery).filter(
 				([_key, value]) => value !== undefined && value !== null,
 			),
 		);
@@ -54,66 +53,72 @@ function createSoldierRouter() {
 		const soldiersFound = await soldiersRepository.find(filter);
 
 		return res.status(200).json(soldiersFound);
-	});
+	},
+);
 
-	router.delete("/:id", async (req, res) => {
-		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
+soldiersRouter.delete(
+	"/:id",
+	validate({ params: soldierIdSchema }),
+	async (req, res) => {
+		const soldierId = { _id: req.validatedParams.id };
+		const deleteResult = await soldiersRepository.deleteById(soldierId);
 
-		const deleteResponse =
-			await soldiersRepository.deleteById(validatedSoldierId);
+		if (deleteResult.deletedCount !== 1) {
+			return res
+				.status(404)
+				.json({ status: "error", message: "soldier wasn't found" });
+		}
 
-		if (deleteResponse.deletedCount === 1) return res.sendStatus(204);
+		return res.sendStatus(204);
+	},
+);
 
-		return res
-			.status(404)
-			.json({ status: "error", message: "soldier wasn't found" });
-	});
-
-	router.patch("/:id", async (req, res) => {
-		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
-
-		const validatedSoldier = soldierGetSchema.parse(req.body);
-
-		validatedSoldier.updatedAt = new Date();
-
-		const patchResponse = await soldiersRepository.updateById(
-			validatedSoldierId,
-			validatedSoldier,
+soldiersRouter.patch(
+	"/:id",
+	validate({ params: soldierIdSchema, body: soldierQuerySchema }),
+	async (req, res) => {
+		const soldierId = { _id: req.validatedParams.id };
+		const patchedSoldier = req.validatedBody;
+		const patchResult = await soldiersRepository.updateById(
+			soldierId,
+			patchedSoldier,
 		);
 
-		if (patchResponse.modifiedCount === 1)
-			res.status(200).json({ message: validatedSoldier });
+		if (patchResult.modifiedCount !== 1) {
+			return res.status(404).json({
+				status: "error",
+				message: "soldier wasn't found or couldn't be changed",
+			});
+		}
 
-		return res.status(404).json({
-			status: "error",
-			message: "soldier wasn't found or couldn't be changed",
-		});
-	});
+		const newSoldier = await soldiersRepository.findById(soldierId);
+		return res.status(200).json({ message: newSoldier });
+	},
+);
 
-	router.patch("/:id/limitations", async (req, res) => {
-		const validatedSoldierId = soldierIdSchema.parse({ _id: req.params.id });
-		const newLimitations = soldierLimitationSchema.parse(req.body);
-		const updatedAt = { updatedAt: new Date() };
-
-		const patchResponse = await soldiersRepository.updateLimitationsById(
-			validatedSoldierId,
+soldiersRouter.patch(
+	"/:id/limitations",
+	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
+	async (req, res) => {
+		const soldierId = { _id: req.validatedParams.id };
+		const newLimitations = req.validatedBody;
+		const patchResult = await soldiersRepository.updateLimitationsById(
+			soldierId,
 			newLimitations,
-			updatedAt,
 		);
 
-		if (!(patchResponse.modifiedCount === 1))
+		if (!(patchResult.modifiedCount === 1))
 			return res.status(404).json({
 				status: "error",
 				message: "soldier wasn't found or couldn't be changed",
 			});
 
+		const newSoldier = await soldiersRepository.findById(soldierId);
+
 		res.status(200).json({
-			message: `new limitations:${JSON.stringify(newLimitations.limitations)}`,
+			message: newSoldier,
 		});
-	});
+	},
+);
 
-	
-	return router;
-}
-
-export default createSoldierRouter;
+export default soldiersRouter;

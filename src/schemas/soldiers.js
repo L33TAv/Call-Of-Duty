@@ -10,85 +10,82 @@ const RANK_NAMES = {
 	6: "colonel",
 };
 
-const soldierSchema = z
-	.object({
-		_id: z
-			.string()
-			.regex(/^\d+$/, { message: "the id must contain only numbers." })
-			.length(7),
-		name: z.string().min(3).max(50),
-		rankValue: z.number().gte(0).lte(6).optional(),
-		rankName: z.string().optional(),
-		limitations: z.array(z.string().toLowerCase()).optional(),
-	})
-	.strict()
-	.refine(
-		(data) => {
-			const rankValue = data.rankValue;
-			const rankName = data.rankName;
+const idSchema = z
+	.string()
+	.regex(/^\d+$/, { message: "the id must contain only numbers." })
+	.length(7);
 
-			if (
-				rankValue !== null &&
-				rankValue !== undefined &&
-				rankName !== null &&
-				rankName !== undefined
-			)
-				return RANK_NAMES[rankValue] === rankName;
-			else if (rankName !== null && rankName !== undefined)
-				return Object.values(RANK_NAMES).includes(rankName);
-			else if (rankValue !== null && rankValue !== undefined) return true;
-			return false;
-		},
-		{
-			error: "rankName or rankValue doesn't match the requirements.",
-		},
-	);
+const limitationSchema = z
+	.array(
+		z.string().trim().min(1, "limitation string cannot be empty").toLowerCase(),
+	)
+	.min(1, "Limitations list cannot be empty")
+	.refine((items) => new Set(items).size === items.length, {
+		message: "Array must not contain duplicate items",
+	});
 
 const soldierIdSchema = z.object({
-	_id: z
-		.string()
-		.regex(/^\d+$/, { message: "the id must contain only numbers." })
-		.length(7),
+	id: idSchema,
 });
-
-const soldierGetSchema = z
-	.object({
-		name: z.string().min(3).max(50).optional(),
-		rankValue: z.coerce.number().gte(0).lte(6).optional(),
-		rankName: z.string().optional(),
-		limitations: z.array(z.string()).optional(),
-	})
-	.strict()
-	.refine(
-		(data) => {
-			const rankValue = data.rankValue;
-			const rankName = data.rankName;
-
-			if (
-				rankValue !== null &&
-				rankValue !== undefined &&
-				rankName !== null &&
-				rankName !== undefined
-			)
-				return RANK_NAMES[rankValue] === rankName;
-			else if (rankName !== null && rankName !== undefined)
-				return Object.values(RANK_NAMES).includes(rankName);
-			return true;
-		},
-		{
-			error: "rankName or rankValue doesn't match the requirements.",
-		},
-	);
 
 const soldierLimitationSchema = z
 	.object({
-		limitations: z.array(z.string()),
+		limitations: limitationSchema,
 	})
 	.strict();
 
+const baseSoldierObject = z
+	.object({
+		_id: idSchema,
+		name: z.string().trim().min(3).max(50),
+		rankValue: z.coerce.number().gte(0).lte(6).optional(),
+		rankName: z.string().optional(),
+		limitations: limitationSchema.optional(),
+	})
+	.strict();
+
+const rankvalidationRefine = (allowEmpty = false) => [
+	(data) => {
+		const rankValue = data.rankValue;
+		const rankName = data.rankName;
+
+		if (rankValue !== undefined && rankName !== undefined)
+			return RANK_NAMES[rankValue] === rankName;
+		else if (rankName !== undefined)
+			return Object.values(RANK_NAMES).includes(rankName);
+		else if (rankValue !== undefined) return rankValue in RANK_NAMES;
+		return allowEmpty;
+	},
+	{
+		message: "rankName or rankValue doesn't match the requirements.",
+	},
+];
+
+const soldierSchema = baseSoldierObject.refine(...rankvalidationRefine(false));
+
+const soldierQuerySchema = baseSoldierObject
+	.omit({ _id: true })
+	.partial()
+	.extend({
+		limitations: z
+			.union([
+				z
+					.string()
+					.transform((val) =>
+						val
+							? val.split(",").filter((item) => item.trim() !== "")
+							: undefined,
+					),
+				z.array(z.string()),
+			])
+			.optional()
+			.pipe(limitationSchema.optional()),
+	})
+	.refine(...rankvalidationRefine(true));
+
 export {
-	soldierGetSchema,
 	soldierIdSchema,
 	soldierLimitationSchema,
+	soldierQuerySchema,
 	soldierSchema,
 };
