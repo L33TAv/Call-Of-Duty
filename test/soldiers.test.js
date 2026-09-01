@@ -52,16 +52,16 @@ afterAll(async () => {
 });
 
 describe("Test /soldiers endpoints", () => {
-	describe("Test POST /soldiers endpoint", () => {
+	describe.only("Test POST /soldiers endpoint", () => {
 		it("should return 201 when soldier is valid", async () => {
 			const body = createSoldierBody();
 
 			const response = await request(app).post("/soldiers").send(body);
 
 			expect(response.statusCode).toBe(201);
-			expect(response.body.message).toMatchObject(body);
-			expect(response.body.message).toHaveProperty("createdAt");
-			expect(response.body.message).toHaveProperty("updatedAt");
+			expect(response.body).toMatchObject(body);
+			expect(response.body).toHaveProperty("createdAt");
+			expect(response.body).toHaveProperty("updatedAt");
 		});
 
 		it("should return 201 when soldier is valid - with limitations", async () => {
@@ -70,21 +70,17 @@ describe("Test /soldiers endpoints", () => {
 			const response = await request(app).post("/soldiers").send(body);
 
 			expect(response.statusCode).toBe(201);
-			expect(response.body.message).toMatchObject(body);
-			expect(response.body.message).toHaveProperty("createdAt");
-			expect(response.body.message).toHaveProperty("updatedAt");
+			expect(response.body).toMatchObject(body);
+			expect(response.body).toHaveProperty("createdAt");
+			expect(response.body).toHaveProperty("updatedAt");
 		});
 
 		it("should return 500 when an unexpected error occurs", async () => {
 			const validSoldier = createSoldierBody();
 
-			vi.spyOn(clientDB, "getDb").mockReturnValue({
-				collection: () => ({
-					insertOne: () => {
-						throw new Error("something unexpected happened");
-					},
-				}),
-			});
+			vi.spyOn(soldiersRepository, "insertOne").mockRejectedValue(
+				new Error("something unexpected happened"),
+			);
 
 			const response = await request(app).post("/soldiers").send(validSoldier);
 

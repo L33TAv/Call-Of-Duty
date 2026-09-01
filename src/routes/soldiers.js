@@ -17,9 +17,7 @@ soldiersRouter.post(
 		const newSoldier = req.validatedBody;
 		await soldiersRepository.insertOne(newSoldier);
 
-		return res.status(201).json({
-			message: newSoldier,
-		});
+		return res.status(201).json(newSoldier);
 	},
 );
 
@@ -27,7 +25,7 @@ soldiersRouter.get(
 	"/:id",
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const soldierInDB = await soldiersRepository.findById(soldierId);
 
 		if (!soldierInDB) {
@@ -35,6 +33,7 @@ soldiersRouter.get(
 				.status(404)
 				.json({ status: "error", message: "soldier was not found." });
 		}
+
 		return res.status(200).json(soldierInDB);
 	},
 );
@@ -60,7 +59,7 @@ soldiersRouter.delete(
 	"/:id",
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const deleteResult = await soldiersRepository.deleteById(soldierId);
 
 		if (deleteResult.deletedCount !== 1) {
@@ -77,7 +76,7 @@ soldiersRouter.patch(
 	"/:id",
 	validate({ params: soldierIdSchema, body: soldierQuerySchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const patchedSoldier = req.validatedBody;
 		const patchResult = await soldiersRepository.updateById(
 			soldierId,
@@ -92,7 +91,7 @@ soldiersRouter.patch(
 		}
 
 		const newSoldier = await soldiersRepository.findById(soldierId);
-		return res.status(200).json({ message: newSoldier });
+		return res.status(200).json(newSoldier);
 	},
 );
 
@@ -100,7 +99,7 @@ soldiersRouter.patch(
 	"/:id/limitations",
 	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const newLimitations = req.validatedBody;
 		const patchResult = await soldiersRepository.updateLimitationsById(
 			soldierId,
@@ -113,11 +112,9 @@ soldiersRouter.patch(
 				message: "soldier wasn't found or couldn't be changed",
 			});
 
-		const newSoldier = await soldiersRepository.findById(soldierId);
+		const updatedSoldier = await soldiersRepository.findById(soldierId);
 
-		res.status(200).json({
-			message: newSoldier,
-		});
+		res.status(200).json(updatedSoldier);
 	},
 );
 

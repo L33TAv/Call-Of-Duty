@@ -11,22 +11,29 @@ export async function insertOne(soldier) {
 	return soldiersCollection().insertOne(soldier);
 }
 
-export async function findById(idObject) {
-	return soldiersCollection().findOne(idObject);
+export async function findById(id) {
+	return soldiersCollection().findOne({ _id: id });
 }
+
 export async function find(filter = {}) {
 	return soldiersCollection().find(filter).toArray();
 }
-export async function deleteById(idObject) {
-	return soldiersCollection().deleteOne(idObject);
+
+export async function deleteById(id) {
+	return soldiersCollection().deleteOne({ _id: id });
 }
-export async function updateById(idObject, newSoldier) {
+
+export async function updateById(id, newSoldier) {
 	newSoldier.updatedAt = new Date();
-	return soldiersCollection().updateOne(idObject, { $set: newSoldier });
+	return soldiersCollection().updateOne({ _id: id }, { $set: newSoldier });
 }
-export async function updateLimitationsById(idObject, limitations) {
-	return soldiersCollection().updateOne(idObject, {
-		$addToSet: { limitations: { $each: limitations.limitations } },
-		$set: { updatedAt: new Date() },
-	});
+
+export async function updateLimitationsById(id, limitations) {
+	return soldiersCollection().updateOne(
+		{ _id: id },
+		{
+			$addToSet: { limitations: { $each: limitations.limitations } },
+			$set: { updatedAt: new Date() },
+		},
+	);
 }
