@@ -1,27 +1,48 @@
-import { MongoClient } from "mongodb";
-import { pino } from "pino";
-import createApp from "./app.js";
+import { createApp } from "./app.js";
 import config from "./config.js";
-
-const client = new MongoClient(config.mongoURI);
+import { closeDb, connectClient } from "./db/client.js";
+import { logger } from "./middleware/logger.js";
 
 const PORT = config.port;
 
-const logger = pino({level:config.logLevel});
-
-const app = createApp(client);
-
 async function start() {
-	await client.connect();
+	try {
+		await connectClient();
 
-	const server = app.listen(PORT, () => {
-		logger.info(`Server is running on port ${PORT}`);
-	});
+		const app = createApp();
 
-	server.on("close", async () => {
-		await client.close();
-		logger.info("server was closed");
-	});
+		const server = app.listen(PORT, () => {
+			logger.info(`Server is running on port ${PORT}`);
+		});
+
+		process.on("SIGTERM", () => shutdown("SIGTERM", server));
+		process.on("SIGINT", () => shutdown("SIGINT", server));
+	} catch (err) {
+		logger.error(err, "Failed to start server:");
+		process.exit(1);
+	}
+}
+
+async function shutdown(signal, server) {
+	try {
+		logger.info(`${signal} received. Shutting down gracefully...`);
+
+		await new Promise((resolve, reject) => {
+			server.close((err) => {
+				if (err) return reject(err);
+				logger.info("HTTP server closed");
+				resolve();
+			});
+		});
+
+		await closeDb();
+		logger.info("MongoDB connection closed");
+
+		process.exitCode = 0;
+	} catch (err) {
+		logger.error(err, "Error during shutdown:");
+		process.exitCode = 1;
+	}
 }
 
 start();

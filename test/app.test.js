@@ -1,42 +1,57 @@
+import { MongoNetworkError } from "mongodb";
 import request from "supertest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
+import { createApp } from "../src/app.js";
+import * as clientDB from "../src/db/client.js";
 
-import { describe, expect, it } from "vitest";
+const app = createApp();
 
-import createApp from "../src/app.js";
+beforeAll(async () => {
+	await clientDB.connectClient();
+});
 
-const mockClient = {
-	db: () => ({
-		command: async () => ({ ok: 1 }),
-	}),
-};
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
-const mockBrokenClient = {
-	db: () => ({
-		command: async () => {
-			throw new Error("connection lost");
-		},
-	}),
-};
+afterAll(async () => {
+	await clientDB.closeDb();
+});
 
-const app = createApp(mockClient);
-const badApp = createApp(mockBrokenClient);
-
-describe("checks that health endpoints works correctly", () => {
-	it("should return code 200 for /health endpoint", async () => {
+describe("Test health endpoints", () => {
+	it("should return code 200 for /health", async () => {
 		const response = await request(app).get("/health");
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ status: "ok" });
 	});
 
-	it("should return status code 200 for /health/db get route", async () => {
+	it("should return status code 200 for GET /health/db", async () => {
 		const response = await request(app).get("/health/db");
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ status: "ok" });
 	});
 
-	it("should return status code 500 when fails to ping /health/db get route", async () => {
-		const badResponse = await request(badApp).get("/health/db");
-		expect(badResponse.statusCode).toBe(500);
-		expect(badResponse.body.status).toBe("error");
+	it("should return status code 500 when fails to ping GET /health/db", async () => {
+		vi.spyOn(clientDB, "getClient").mockRejectedValue({
+			db: () => ({
+				command: async () => {
+					throw new MongoNetworkError(
+						"failed to connect to server on first connect",
+					);
+				},
+			}),
+		});
+
+		const response = await request(app).get("/health/db");
+		expect(response.statusCode).toBe(500);
+		expect(response.body.status).toBe("error");
 	});
 });
