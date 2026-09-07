@@ -3,7 +3,7 @@ import { z } from "zod";
 import { logger } from "./logger.js";
 
 const errorHandler = (err, req, res, _next) => {
-	logger.error(
+	(req.log || logger).error(
 		{ url: req.originalUrl, method: req.method, err: err },
 		`Error with the request.`,
 	);
@@ -12,7 +12,7 @@ const errorHandler = (err, req, res, _next) => {
 		if (err.code === 11000) {
 			return res
 				.status(409)
-				.json({ status: "error", message: "soldier already exists" });
+				.json({ status: "error", message: "Resource already exists" });
 		}
 
 		return res.status(503).json({ status: "error", message: "database error" });
