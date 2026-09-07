@@ -4,6 +4,7 @@ import { validate } from "../middleware/validate.js";
 import {
 	soldierIdSchema,
 	soldierLimitationSchema,
+	soldierPatchSchema,
 	soldierQuerySchema,
 	soldierSchema,
 } from "../schemas/soldiers.js";
@@ -17,9 +18,9 @@ soldiersRouter.post(
 		const newSoldier = req.validatedBody;
 		await soldiersRepository.insertOne(newSoldier);
 
-		return res.status(201).json({
-			message: newSoldier,
-		});
+		req.log.info({ newSoldier }, "successfully added new soldier.");
+
+		return res.status(201).json(newSoldier);
 	},
 );
 
@@ -27,14 +28,22 @@ soldiersRouter.get(
 	"/:id",
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const soldierInDB = await soldiersRepository.findById(soldierId);
 
 		if (!soldierInDB) {
+			req.log.warn(
+				{ soldierId: soldierId },
+				"request failed. soldier id wasn't found.",
+			);
+
 			return res
 				.status(404)
 				.json({ status: "error", message: "soldier was not found." });
 		}
+
+		req.log.info({ soldierId }, "soldier found successfully.");
+
 		return res.status(200).json(soldierInDB);
 	},
 );
@@ -44,13 +53,10 @@ soldiersRouter.get(
 	validate({ query: soldierQuerySchema }),
 	async (req, res) => {
 		const soldierQuery = req.validatedQuery;
-		const filter = Object.fromEntries(
-			Object.entries(soldierQuery).filter(
-				([_key, value]) => value !== undefined && value !== null,
-			),
-		);
 
-		const soldiersFound = await soldiersRepository.find(filter);
+		const soldiersFound = await soldiersRepository.find(soldierQuery);
+
+		req.log.info({ soldierQuery }, "soldier found successfully.");
 
 		return res.status(200).json(soldiersFound);
 	},
@@ -60,14 +66,24 @@ soldiersRouter.delete(
 	"/:id",
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const deleteResult = await soldiersRepository.deleteById(soldierId);
 
 		if (deleteResult.deletedCount !== 1) {
+			req.log.warn(
+				{ soldierId },
+				"delete request failed. soldier wasn't found.",
+			);
+
 			return res
 				.status(404)
 				.json({ status: "error", message: "soldier wasn't found" });
 		}
+
+		req.log.info(
+			{ soldierId, deleteResult },
+			"soldier was deleted successfully.",
+		);
 
 		return res.sendStatus(204);
 	},
@@ -75,24 +91,34 @@ soldiersRouter.delete(
 
 soldiersRouter.patch(
 	"/:id",
-	validate({ params: soldierIdSchema, body: soldierQuerySchema }),
+	validate({ params: soldierIdSchema, body: soldierPatchSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const patchedSoldier = req.validatedBody;
 		const patchResult = await soldiersRepository.updateById(
 			soldierId,
 			patchedSoldier,
 		);
 
-		if (patchResult.modifiedCount !== 1) {
+		if (!patchResult.matchedCount) {
+			req.log.warn(
+				{ soldierId },
+				"patch request failed. soldier wasn't found.",
+			);
+
 			return res.status(404).json({
 				status: "error",
 				message: "soldier wasn't found or couldn't be changed",
 			});
 		}
 
+		req.log.info(
+			{ soldierId, patchedSoldier },
+			"soldier was patched successfully.",
+		);
+
 		const newSoldier = await soldiersRepository.findById(soldierId);
-		return res.status(200).json({ message: newSoldier });
+		return res.status(200).json(newSoldier);
 	},
 );
 
@@ -100,24 +126,33 @@ soldiersRouter.patch(
 	"/:id/limitations",
 	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
 	async (req, res) => {
-		const soldierId = { _id: req.validatedParams.id };
+		const soldierId = req.validatedParams.id;
 		const newLimitations = req.validatedBody;
 		const patchResult = await soldiersRepository.updateLimitationsById(
 			soldierId,
 			newLimitations,
 		);
 
-		if (!(patchResult.modifiedCount === 1))
+		if (!patchResult.matchedCount) {
+			req.log.warn(
+				{ soldierId },
+				"limitations patch request failed. soldier wasn't found.",
+			);
+
 			return res.status(404).json({
 				status: "error",
 				message: "soldier wasn't found or couldn't be changed",
 			});
+		}
 
-		const newSoldier = await soldiersRepository.findById(soldierId);
+		const updatedSoldier = await soldiersRepository.findById(soldierId);
 
-		res.status(200).json({
-			message: newSoldier,
-		});
+		req.log.info(
+			{ soldierId, newLimitations },
+			"soldier was patched successfully.",
+		);
+
+		res.status(200).json(updatedSoldier);
 	},
 );
 

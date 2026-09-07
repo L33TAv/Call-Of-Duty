@@ -5,8 +5,12 @@ const logger = pino({ level: config.logLevel });
 const loggerMiddleware = (req, res, next) => {
 	res.on("finish", () => {
 		if (res.statusCode < 400) {
-			logger.info(
-				{ url: req.originalUrl, method: req.method, status: res.statusCode },
+			req.log.info(
+				{
+					url: req.originalUrl,
+					method: req.method,
+					status: res.statusCode,
+				},
 				`Request was successful.`,
 			);
 		}
