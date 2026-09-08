@@ -25,26 +25,58 @@ const GeoJsonPointSchema = z.object({
 		),
 });
 
-const dutyScehma = z
+const baseDutySchema = z
 	.object({
 		name: z.string().min(3).max(50),
 		description: z.string().min(1).max(100),
 		location: GeoJsonPointSchema,
-		startTime: z.string().datetime(),
+		startTime: z
+			.string()
+			.datetime()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "Start time must be in the future",
+			}),
 		endTime: z.string().datetime(),
-		constraints: z.array(z.string()),
+		constraints: z.array(z.string().optional()),
 		soldiersRequired: z.number().positive(),
 		value: z.number().positive(),
 		minRank: z.number().min(0).max(6).optional(),
 		maxRank: z.number().min(0).max(6).optional(),
 	})
-	.strict()
+	.strict();
+
+const rankRefine = (data) => {
+	if (data.minRank !== undefined && data.maxRank !== undefined)
+		return data.minRank < data.maxRank;
+	return true;
+};
+
+const dutyScehma = baseDutySchema
 	.refine((data) => data.startTime < data.endTime, {
 		message: "End time must be after the start time",
 		path: ["endTime"],
+	})
+	.refine((data) => rankRefine(data));
+
+const getDutySchema = baseDutySchema
+	.partial()
+	.refine(
+		(data) => {
+			if (data.startTime !== undefined && data.endTime !== undefined)
+				return data.startTime < data.endTime;
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	)
+	.refine((data) => rankRefine(data))
+	.refine((data) => Object.keys(data).length > 0, {
+		message: "At least one filter must be provided",
 	});
 
-const getDutySchema = z
+const patchDutyScehma = z
 	.object({
 		name: z.string().min(3).max(50).optional(),
 		description: z.string().min(1).max(100).optional(),
@@ -67,37 +99,11 @@ const getDutySchema = z
 			message: "End time must be after the start time",
 			path: ["endTime"],
 		},
-	);
-
-let patchDutyScehma = z
-	.object({
-		name: z.string().min(3).max(50).optional(),
-		description: z.string().min(1).max(100).optional(),
-		location: GeoJsonPointSchema.optional(),
-		startTime: z.string().datetime().optional(),
-		endTime: z.string().datetime().optional(),
-		constraints: z.array(z.string()).optional(),
-		soldiersRequired: z.coerce.number().positive().optional(),
-		value: z.coerce.number().positive().optional(),
-		minRank: z.coerce.number().min(0).max(6).optional(),
-		maxRank: z.coerce.number().min(0).max(6).optional(),
+	)
+	.refine((data) => Object.keys(data).length > 0, {
+		message: "At least one property must be provided",
 	})
-	.strict()
-	.refine(
-		(data) => {
-			if (data.startTime && data.endTime) return data.startTime < data.endTime;
-			return true;
-		},
-		{
-			message: "End time must be after the start time",
-			path: ["endTime"],
-		},
-	);
-
-patchDutyScehma = patchDutyScehma.refine(
-	(data) => Object.keys(data).length > 0,
-	{ message: "At least one property must be provided" },
-);
+	.refine((data) => rankRefine(data));
 
 export {
 	dutyScehma,

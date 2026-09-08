@@ -1,9 +1,7 @@
 import express from "express";
 import { ObjectId } from "mongodb";
-import { pino } from "pino";
-import config from "../config.js";
-
-import connectDutiesCollection from "../db/dutiesDB.js";
+import * as soldiersRepository from "../db/dutiesDB.js";
+import { validate } from "../middleware/validate.js";
 
 import {
 	dutyScehma,
@@ -12,122 +10,102 @@ import {
 	patchDutyScehma,
 } from "../schemas/duties.js";
 
-const logger = pino({ level: config.logLevel });
+const dutiesRouter = express.Router();
 
-function createDutiesRouter(client) {
-	const router = express.Router();
+dutiesRouter.post("/", validate({ body: dutyScehma }), async (req, res) => {
+	const newDuty = req.validatedBody;
 
-	router.post("/", async (req, res) => {
-		let validatedDuty = dutyScehma.parse(req.body);
+	await soldiersRepository.insertOne(newDuty);
 
-		if (new Date(validatedDuty.startTime) < new Date()) {
-			throw new Error("start time must be in the future");
-		}
+	req.log.info({ newDuty }, "successfully added new duty.");
 
-		validatedDuty = {
-			...validatedDuty,
-			soldiers: [],
-			status: "unscheduled",
-			statusHistory: ["unscheduled", new Date()],
-		};
+	return res.status(201).json(newDuty);
+});
 
-		const dutyCollection = connectDutiesCollection(client);
+dutiesRouter.get("/", validate({ query: getDutySchema }), async (req, res) => {
+	const dutyQuery = getDutySchema.parse({ ...req.query });
 
-		await dutyCollection.insertOne(validatedDuty);
+	const dutiesInDb = await soldiersRepository.find(dutyQuery);
 
-		logger.info(`request for ${req.path} post endpoint was successful.`);
+	req.log.info({ dutyQuery }, "duty found successfully.");
 
-		return res.status(201).json({
-			message: `duty was added successfully, \n${JSON.stringify(validatedDuty)}`,
-		});
-	});
+	return res.status(200).json(dutiesInDb);
+});
 
-	router.get("/", async (req, res) => {
-		const validatedSearch = getDutySchema.parse({ ...req.query });
+// dutiesRouter.get("/:id", async (req, res) => {
+// 	objectIdSchema.parse({ _id: req.params.id });
 
-		const dutyCollection = connectDutiesCollection(client);
+// 	const validatedId = { _id: new ObjectId(req.params.id) };
 
-		const dutiesFound = await dutyCollection.find(validatedSearch);
+// 	const dutyCollection = connectDutiesCollection(client);
 
-		return res.status(200).json(dutiesFound);
-	});
+// 	const dutyFound = await dutyCollection.findById(validatedId);
 
-	router.get("/:id", async (req, res) => {
-		objectIdSchema.parse({ _id: req.params.id });
+// 	if (dutyFound) {
+// 		return res.status(200).json({
+// 			message: `duty was found ${JSON.stringify(dutyFound)} `,
+// 		});
+// 	}
 
-		const validatedId = { _id: new ObjectId(req.params.id) };
+// 	return res
+// 		.status(404)
+// 		.json({ status: "error", message: "duty was not found." });
+// });
 
-		const dutyCollection = connectDutiesCollection(client);
+// dutiesRouter.delete("/:id", async (req, res) => {
+// 	objectIdSchema.parse({ _id: req.params.id });
 
-		const dutyFound = await dutyCollection.findById(validatedId);
+// 	const validatedId = { _id: new ObjectId(req.params.id) };
 
-		if (dutyFound) {
-			return res.status(200).json({
-				message: `duty was found ${JSON.stringify(dutyFound)} `,
-			});
-		}
+// 	const dutyCollection = connectDutiesCollection(client);
 
-		return res
-			.status(404)
-			.json({ status: "error", message: "duty was not found." });
-	});
+// 	const dutyFound = await dutyCollection.findById(validatedId);
 
-	router.delete("/:id", async (req, res) => {
-		objectIdSchema.parse({ _id: req.params.id });
+// 	if (dutyFound?.status === "scheduled")
+// 		return res
+// 			.status(404)
+// 			.json({ status: "error", message: "scheduled duty can't be deleted" });
 
-		const validatedId = { _id: new ObjectId(req.params.id) };
+// 	const deleteResponse = await dutyCollection.deleteById(validatedId);
 
-		const dutyCollection = connectDutiesCollection(client);
+// 	if (!deleteResponse.deletedCount)
+// 		return res
+// 			.status(404)
+// 			.json({ status: "error", message: "duty wasn't found." });
 
-		const dutyFound = await dutyCollection.findById(validatedId);
+// 	return res.sendStatus(204);
+// });
 
-		if (dutyFound?.status === "scheduled")
-			return res
-				.status(404)
-				.json({ status: "error", message: "scheduled duty can't be deleted" });
+// dutiesRouter.patch("/:id", async (req, res) => {
+// 	objectIdSchema.parse({ _id: req.params.id });
 
-		const deleteResponse = await dutyCollection.deleteById(validatedId);
+// 	const validatedId = { _id: new ObjectId(req.params.id) };
 
-		if (!deleteResponse.deletedCount)
-			return res
-				.status(404)
-				.json({ status: "error", message: "duty wasn't found." });
+// 	const dutyCollection = connectDutiesCollection(client);
 
-		return res.sendStatus(204);
-	});
+// 	const dutyFound = await dutyCollection.findById(validatedId);
 
-	router.patch("/:id", async (req, res) => {
-		objectIdSchema.parse({ _id: req.params.id });
+// 	if (dutyFound?.status === "scheduled")
+// 		return res
+// 			.status(404)
+// 			.json({ status: "error", message: "scheduled duty can't be changed" });
 
-		const validatedId = { _id: new ObjectId(req.params.id) };
+// 	const validatedDuty = patchDutyScehma.parse(req.body);
 
-		const dutyCollection = connectDutiesCollection(client);
+// 	const patchResponse = await dutyCollection.updateById(
+// 		validatedId,
+// 		validatedDuty,
+// 	);
 
-		const dutyFound = await dutyCollection.findById(validatedId);
+// 	if (!(patchResponse.modifiedCount === 1))
+// 		return res.status(404).json({
+// 			status: "error",
+// 			message: "duty wasn't found or couldn't be changed",
+// 		});
 
-		if (dutyFound?.status === "scheduled")
-			return res
-				.status(404)
-				.json({ status: "error", message: "scheduled duty can't be changed" });
+// 	res.status(200).json({
+// 		message: `new duty:${JSON.stringify(validatedDuty)}`,
+// 	});
+// });
 
-		const validatedDuty = patchDutyScehma.parse(req.body);
-
-		const patchResponse = await dutyCollection.updateById(
-			validatedId,
-			validatedDuty,
-		);
-
-		if (!(patchResponse.modifiedCount === 1))
-			return res.status(404).json({
-				status: "error",
-				message: "duty wasn't found or couldn't be changed",
-			});
-
-		res.status(200).json({
-			message: `new duty:${JSON.stringify(validatedDuty)}`,
-		});
-	});
-
-	return router;
-}
-export default createDutiesRouter;
+export default dutiesRouter;
