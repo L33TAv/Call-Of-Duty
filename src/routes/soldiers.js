@@ -125,7 +125,7 @@ soldiersRouter.patch(
 	},
 );
 
-soldiersRouter.patch(
+soldiersRouter.put(
 	"/:id/limitations",
 	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
 	async (req, res) => {
@@ -139,7 +139,7 @@ soldiersRouter.patch(
 		if (!patchResult.matchedCount) {
 			req.log.warn(
 				{ soldierId },
-				"limitations patch request failed. soldier wasn't found.",
+				"limitations put request failed. soldier wasn't found.",
 			);
 
 			return res.status(404).json({
@@ -152,7 +152,7 @@ soldiersRouter.patch(
 
 		req.log.info(
 			{ soldierId, newLimitations },
-			"soldier was patched successfully.",
+			"soldier was updated successfully.",
 		);
 
 		res.status(200).json(updatedSoldier);

@@ -303,7 +303,7 @@ describe("Test /soldiers endpoints", () => {
 			);
 		});
 
-		it("should return status code 200 when limitations are given", async () => {
+		it("should return 200 when limitations are given", async () => {
 			const validSoldierDocument = createSoldierDocument({
 				limitations: ["food", "money"],
 			});
@@ -341,7 +341,7 @@ describe("Test /soldiers endpoints", () => {
 			);
 		});
 
-		it("should return status code 200 when no soldier attributes are given", async () => {
+		it("should return 200 when no search query is given", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
 			await soldiersRepository.soldiersCollection().insertOne({
@@ -488,7 +488,7 @@ describe("Test /soldiers endpoints", () => {
 	});
 
 	describe("Test PATCH /soldiers/:id endpoint", () => {
-		it("should return status code 200 when the soldier was patched", async () => {
+		it("should return 200 when the soldier was patched", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
 			const newPatch = { name: "patrick", limitations: ["food"] };
@@ -516,7 +516,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(newUpdated).not.toBe(updatedAt);
 		});
 
-		it("should return status code 200 when the soldier limitations were patched", async () => {
+		it("should return 200 when the soldier limitations were patched", async () => {
 			const validSoldierDocument = createSoldierDocument({
 				limitations: ["food"],
 			});
@@ -545,7 +545,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(newUpdated).not.toBe(updatedAt);
 		});
 
-		it("should return status code 200 when the soldier rankName was patched", async () => {
+		it("should return 200 when the soldier rankName was patched", async () => {
 			const validSoldierDocument = createSoldierDocument({});
 			const newPatch = { rankName: "lieutenant" };
 
@@ -570,6 +570,23 @@ describe("Test /soldiers endpoints", () => {
 			expect(newUpdated).not.toBe(updatedAt);
 		});
 
+		it("should return 200 and clear limitations when empty array is provided", async () => {
+			const validSoldierDocument = createSoldierDocument({
+				limitations: ["food", "walking"],
+			});
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldierDocument,
+			});
+
+			const response = await request(app)
+				.patch(`/soldiers/${validSoldierDocument._id}`)
+				.send({ limitations: [] });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.limitations).toEqual([]);
+		});
+
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { name: "bobi" };
@@ -591,7 +608,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.message).toContain("database error");
 		});
 
-		it("should return status code 400 when the soldier id isn't valid - length", async () => {
+		it("should return 400 when the soldier id isn't valid - length", async () => {
 			const newPatch = { name: "sam" };
 			const response = await request(app)
 				.patch(`/soldiers/1234`)
@@ -601,7 +618,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("id");
 		});
 
-		it("should return status code 400 when the soldier id can't be changed", async () => {
+		it("should return 400 when the soldier id can't be changed", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { _id: "1234567" };
 
@@ -618,7 +635,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("Unrecognized key");
 		});
 
-		it("should return status code 400 when the parameters aren't valid - unknown property", async () => {
+		it("should return 400 when the parameters aren't valid - unknown property", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { notRealProperty: "avocado" };
 
@@ -634,7 +651,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("Unrecognized key");
 		});
 
-		it("should return status code 400 when the parameters aren't valid - name", async () => {
+		it("should return 400 when the parameters aren't valid - name", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { name: "a" };
 
@@ -650,7 +667,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("name");
 		});
 
-		it("should return status code 404 when the soldier wasn't found", async () => {
+		it("should return 404 when the soldier wasn't found", async () => {
 			const newPatch = { name: "sandy" };
 
 			const response = await request(app)
@@ -677,12 +694,15 @@ describe("Test /soldiers endpoints", () => {
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(200);
 
 			expect(response.body._id).toBe(validSoldierDocument._id);
+			expect(response.body.limitations).toHaveLength(
+				newLimitations.limitations.length,
+			);
 			expect(response.body.limitations).toEqual(
 				expect.arrayContaining(newLimitations.limitations),
 			);
@@ -692,9 +712,9 @@ describe("Test /soldiers endpoints", () => {
 			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
 		});
 
-		it("should return 200 when soldier limitations patched - patching existing limitations", async () => {
+		it("should return 200 when soldier limitations put existing limitations", async () => {
 			const validSoldierDocument = createSoldierDocument({
-				limitations: ["walking"],
+				limitations: ["walking", "rest"],
 			});
 			const newLimitations = { limitations: ["food", "walking"] };
 
@@ -706,12 +726,15 @@ describe("Test /soldiers endpoints", () => {
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(200);
 
 			expect(response.body._id).toBe(validSoldierDocument._id);
+			expect(response.body.limitations).toHaveLength(
+				newLimitations.limitations.length + 1,
+			);
 			expect(response.body.limitations).toEqual(
 				expect.arrayContaining(newLimitations.limitations),
 			);
@@ -734,7 +757,7 @@ describe("Test /soldiers endpoints", () => {
 			);
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(503);
@@ -742,7 +765,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.message).toContain("database error");
 		});
 
-		it("should return status code 400 when the limitations aren't valid - using numbers", async () => {
+		it("should return 400 when the limitations aren't valid - using numbers", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: [1, "walking"] };
 
@@ -751,7 +774,7 @@ describe("Test /soldiers endpoints", () => {
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
@@ -759,7 +782,7 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("number");
 		});
 
-		it("should return status code 400 when the limitations aren't valid - not an array", async () => {
+		it("should return 400 when the limitations aren't valid - not an array", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: "water" };
 
@@ -768,7 +791,7 @@ describe("Test /soldiers endpoints", () => {
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
@@ -776,24 +799,24 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("array");
 		});
 
-		it("should return status code 400 when the limitations aren't valid - empty limitations", async () => {
+		it("should return 400 when the limitations aren't valid - empty limitations", async () => {
 			const validSoldierDocument = createSoldierDocument();
-			const newLimitations = { limitations: "" };
+			const newLimitations = { limitations: [] };
 
 			await soldiersRepository.soldiersCollection().insertOne({
 				...validSoldierDocument,
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.issues).toContain("limitations");
-			expect(response.body.issues).toContain("string");
+			expect(response.body.issues).toContain("list");
 		});
 
-		it("should return status code 400 when the limitations aren't valid - duplicate limitations", async () => {
+		it("should return 400 when the limitations aren't valid - duplicate limitations", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: ["water", "water"] };
 
@@ -802,7 +825,7 @@ describe("Test /soldiers endpoints", () => {
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/${validSoldierDocument._id}/limitations`)
+				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
@@ -810,27 +833,27 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.body.issues).toContain("duplicate");
 		});
 
-		it("should return status code 400 when the id isn't valid", async () => {
+		it("should return 400 when the id isn't valid", async () => {
 			const validSoldierDocument = createSoldierDocument();
-			const newLimitations = { limitations: ["water", "water"] };
+			const newLimitations = { limitations: ["food", "water"] };
 
 			await soldiersRepository.soldiersCollection().insertOne({
 				...validSoldierDocument,
 			});
 
 			const response = await request(app)
-				.patch(`/soldiers/notValidId/limitations`)
+				.put(`/soldiers/notValidId/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(400);
 			expect(response.body.issues).toContain("id");
 		});
 
-		it("should return status code 404 when the soldier wasn't found", async () => {
+		it("should return 404 when the soldier wasn't found", async () => {
 			const newLimitations = { limitations: ["water", "food"] };
 
 			const response = await request(app)
-				.patch(`/soldiers/1234567/limitations`)
+				.put(`/soldiers/1234567/limitations`)
 				.send(newLimitations);
 
 			expect(response.statusCode).toBe(404);
