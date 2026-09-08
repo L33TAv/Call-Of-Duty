@@ -25,7 +25,10 @@ async function start() {
 
 async function shutdown(signal, server) {
 	try {
-		logger.info(`${signal} received. Shutting down gracefully...`);
+		logger.info(
+			{ signal },
+			"Received shutdown signal. Shutting down gracefully...",
+		);
 
 		await new Promise((resolve, reject) => {
 			server.close((err) => {
@@ -40,7 +43,7 @@ async function shutdown(signal, server) {
 
 		process.exitCode = 0;
 	} catch (err) {
-		logger.error(err, "Error during shutdown:");
+		logger.fatal(err, "Error during shutdown:");
 		process.exitCode = 1;
 	}
 }

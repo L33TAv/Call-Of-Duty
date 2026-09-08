@@ -23,7 +23,6 @@ const limitationSchema = z
 	.array(
 		z.string().trim().min(1, "limitation string cannot be empty").toLowerCase(),
 	)
-	.min(1, "Limitations list cannot be empty")
 	.refine((items) => new Set(items).size === items.length, {
 		message: "Array must not contain duplicate items",
 	});
@@ -36,7 +35,11 @@ const soldierLimitationSchema = z
 	.object({
 		limitations: limitationSchema,
 	})
-	.strict();
+	.strict()
+	.refine((data) => data.limitations.length > 0, {
+		message: "Limitations list cannot be empty",
+		path: ["limitations"],
+	});
 
 const baseSoldierObject = z
 	.object({
