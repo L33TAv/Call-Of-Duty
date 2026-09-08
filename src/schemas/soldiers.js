@@ -93,9 +93,12 @@ const soldierQuerySchema = baseSoldierObject
 	.extend({
 		limitations: z
 			.string()
-			.transform((val) => val.split(",").filter((item) => item.trim() !== ""))
-			.optional()
-			.pipe(limitationSchema.optional()),
+			.transform((val) => {
+				const items = val.split(",").filter((item) => item.trim() !== "");
+				return items.length > 0 ? items : undefined;
+			})
+			.pipe(limitationSchema)
+			.optional(),
 	})
 	.refine(
 		(data) => {
@@ -109,7 +112,10 @@ const soldierQuerySchema = baseSoldierObject
 		{
 			message: "rank doesn't match the requirements.",
 		},
-	);
+	)
+	.refine((data) => Object.keys(data).length > 0, {
+		message: "At least one filter must be provided",
+	});
 
 const soldierPatchSchema = baseSoldierObject
 	.omit({ _id: true })
