@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { MongoNetworkError } from "mongodb";
 import request from "supertest";
 import {
@@ -14,12 +15,16 @@ import { createApp } from "../src/app.js";
 import * as clientDB from "../src/db/client.js";
 import * as soldiersRepository from "../src/db/soldiersDB.js";
 
-let idCounter = "1111111";
+function generateNumericId() {
+	const min = 1000000;
+	const max = 10000000;
+	return crypto.randomInt(min, max).toString();
+}
 
 function createSoldierDocument(override = {}) {
 	const soldierDocument = {
 		name: "bobi",
-		_id: idCounter.toString(),
+		_id: generateNumericId(),
 		rank: {
 			name: "private",
 			value: 0,
@@ -29,19 +34,15 @@ function createSoldierDocument(override = {}) {
 		...override,
 	};
 
-	idCounter++;
-
 	return soldierDocument;
 }
 
 function createSoldierBody(override = {}) {
 	const body = {
 		name: "bobi",
-		_id: idCounter.toString(),
+		_id: generateNumericId(),
 		rankName: "private",
 	};
-
-	idCounter++;
 
 	return { ...body, ...override };
 }
@@ -104,26 +105,26 @@ describe("Test /soldiers endpoints", () => {
 		});
 
 		it("should return 500 when an unexpected error occurs", async () => {
-			const validSoldier = createSoldierBody();
+			const body = createSoldierBody();
 
 			vi.spyOn(soldiersRepository, "insertOne").mockRejectedValue(
 				new Error("something unexpected happened"),
 			);
 
-			const response = await request(app).post("/soldiers").send(validSoldier);
+			const response = await request(app).post("/soldiers").send(body);
 
 			expect(response.statusCode).toBe(500);
 			expect(response.body.status).toBe("error");
 		});
 
 		it("should return 503 when fails connect to DB", async () => {
-			const validSoldier = createSoldierBody();
+			const body = createSoldierBody();
 
 			vi.spyOn(soldiersRepository, "insertOne").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
 			);
 
-			const response = await request(app).post("/soldiers").send(validSoldier);
+			const response = await request(app).post("/soldiers").send(body);
 
 			expect(response.statusCode).toBe(503);
 			expect(response.body.status).toBe("error");
@@ -341,32 +342,6 @@ describe("Test /soldiers endpoints", () => {
 			);
 		});
 
-		it("should return 200 when no search query is given", async () => {
-			const validSoldierDocument = createSoldierDocument();
-
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
-
-			const response = await request(app).get(`/soldiers`);
-
-			expect(response.statusCode).toBe(200);
-
-			expect(response.body.length).toBe(1);
-
-			const { createdAt, updatedAt, ...expectedFields } = validSoldierDocument;
-
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						...expectedFields,
-						createdAt: expect.any(String),
-						updatedAt: expect.any(String),
-					}),
-				]),
-			);
-		});
-
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
@@ -383,6 +358,22 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.statusCode).toBe(503);
 			expect(response.body.status).toBe("error");
 			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 400 when no search query is given", async () => {
+			const validSoldierDocument = createSoldierDocument();
+
+			await soldiersRepository.soldiersCollection().insertOne({
+				...validSoldierDocument,
+			});
+
+			const response = await request(app).get(`/soldiers`);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain(
+				"At least one filter must be provided",
+			);
 		});
 
 		it("should return 400 when search using _id", async () => {
@@ -403,6 +394,14 @@ describe("Test /soldiers endpoints", () => {
 
 		it("should return 400 when search using duplicate limitations", async () => {
 			const response = await request(app).get(`/soldiers?limitations=a,a`);
+
+			expect(response.statusCode).toBe(400);
+
+			expect(response.body.issues).toContain("limitations");
+		});
+
+		it("should return 400 when search using empty limitations", async () => {
+			const response = await request(app).get(`/soldiers?limitations=`);
 
 			expect(response.statusCode).toBe(400);
 
