@@ -25,6 +25,18 @@ const GeoJsonPointSchema = z.object({
 		),
 });
 
+const constraintsSchema = z
+	.array(
+		z
+			.string()
+			.trim()
+			.min(1, "constraints string cannot be empty")
+			.toLowerCase(),
+	)
+	.refine((items) => new Set(items).size === items.length, {
+		message: "Array must not contain duplicate items",
+	});
+
 const baseDutySchema = z
 	.object({
 		name: z.string().min(3).max(50),
@@ -37,7 +49,7 @@ const baseDutySchema = z
 				message: "Start time must be in the future",
 			}),
 		endTime: z.string().datetime(),
-		constraints: z.array(z.string().optional()),
+		constraints: constraintsSchema,
 		soldiersRequired: z.number().positive(),
 		value: z.number().positive(),
 		minRank: z.number().min(0).max(6).optional(),
@@ -59,7 +71,46 @@ const dutyScehma = baseDutySchema
 	.refine((data) => rankRefine(data));
 
 const getDutySchema = baseDutySchema
+	.omit({ location: true })
 	.partial()
+	.extend({
+		location: z
+			.string()
+			.transform((val) => {
+				const items = val
+					.split(",")
+					.filter((item) => item.trim() !== "")
+					.map(Number);
+				return items.length > 0 ? items : undefined;
+			})
+			.transform((val) => ({ type: "Point", coordinates: val }))
+			.pipe(GeoJsonPointSchema)
+			.optional(),
+
+		constraints: z
+			.string()
+			.transform((val) => {
+				const items = val.split(",").filter((item) => item.trim() !== "");
+				return items.length > 0 ? items : undefined;
+			})
+			.pipe(constraintsSchema)
+			.optional(),
+
+		startTime: z
+			.string()
+			.datetime()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "Start time must be in the future",
+			})
+			.optional(),
+
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+		soldiersRequired: z.coerce.number().positive().optional(),
+		value: z.coerce.number().positive().optional(),
+
+		status: z.enum(["unscheduled", "scheduled", "canceled"]).optional(),
+	})
 	.refine(
 		(data) => {
 			if (data.startTime !== undefined && data.endTime !== undefined)
@@ -71,7 +122,20 @@ const getDutySchema = baseDutySchema
 			path: ["endTime"],
 		},
 	)
-	.refine((data) => rankRefine(data))
+	.refine(
+		(data) => {
+			if (data.startTime === undefined && data.endTime !== undefined)
+				return new Date(data.endTime) > new Date();
+			return true;
+		},
+		{
+			message: "End time must be in the future",
+			path: ["endTime"],
+		},
+	)
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	})
 	.refine((data) => Object.keys(data).length > 0, {
 		message: "At least one filter must be provided",
 	});

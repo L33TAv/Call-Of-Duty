@@ -19,9 +19,6 @@ export async function find(filter = {}) {
 	if (mongoFilter.constraints)
 		mongoFilter.constraints = { $all: mongoFilter.constraints };
 
-	if (mongoFilter.soldiers)
-		mongoFilter.soldiers = { $all: mongoFilter.soldiers };
-
 	return dutiesCollection().find(mongoFilter).toArray();
 }
 
