@@ -1,6 +1,6 @@
 import express from "express";
 import { ObjectId } from "mongodb";
-import * as soldiersRepository from "../db/dutiesDB.js";
+import * as dutiesRepository from "../db/dutiesDB.js";
 import { validate } from "../middleware/validate.js";
 
 import {
@@ -9,13 +9,14 @@ import {
 	objectIdSchema,
 	patchDutyScehma,
 } from "../schemas/duties.js";
+import { soldierIdSchema } from "../schemas/soldiers.js";
 
 const dutiesRouter = express.Router();
 
 dutiesRouter.post("/", validate({ body: dutyScehma }), async (req, res) => {
 	const newDuty = req.validatedBody;
 
-	await soldiersRepository.insertOne(newDuty);
+	await dutiesRepository.insertOne(newDuty);
 
 	req.log.info({ newDuty }, "successfully added new duty.");
 
@@ -25,32 +26,34 @@ dutiesRouter.post("/", validate({ body: dutyScehma }), async (req, res) => {
 dutiesRouter.get("/", validate({ query: getDutySchema }), async (req, res) => {
 	const dutyQuery = getDutySchema.parse({ ...req.query });
 
-	const dutiesInDb = await soldiersRepository.find(dutyQuery);
+	const dutiesInDb = await dutiesRepository.find(dutyQuery);
 
 	req.log.info({ dutyQuery }, "duty found successfully.");
 
 	return res.status(200).json(dutiesInDb);
 });
 
-// dutiesRouter.get("/:id", async (req, res) => {
-// 	objectIdSchema.parse({ _id: req.params.id });
+dutiesRouter.get(
+	"/:id",
+	validate({ params: objectIdSchema }),
+	async (req, res) => {
+		const dutyId = req.validatedParams.id;
 
-// 	const validatedId = { _id: new ObjectId(req.params.id) };
+		const dutyFound = await dutiesRepository.findById(dutyId);
 
-// 	const dutyCollection = connectDutiesCollection(client);
+		if (!dutyFound) {
+			req.log.warn({ dutyId }, "request failed. duty id wasn't found.");
 
-// 	const dutyFound = await dutyCollection.findById(validatedId);
+			return res
+				.status(404)
+				.json({ status: "error", message: "duty was not found." });
+		}
 
-// 	if (dutyFound) {
-// 		return res.status(200).json({
-// 			message: `duty was found ${JSON.stringify(dutyFound)} `,
-// 		});
-// 	}
+		req.log.info({ dutyFound }, "duty found successfully.");
 
-// 	return res
-// 		.status(404)
-// 		.json({ status: "error", message: "duty was not found." });
-// });
+		return res.status(200).json(dutyFound);
+	},
+);
 
 // dutiesRouter.delete("/:id", async (req, res) => {
 // 	objectIdSchema.parse({ _id: req.params.id });

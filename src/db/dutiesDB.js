@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { getDb } from "./client.js";
 
 export const dutiesCollection = () => {
@@ -19,15 +20,12 @@ export async function find(filter = {}) {
 	if (mongoFilter.constraints)
 		mongoFilter.constraints = { $all: mongoFilter.constraints };
 
-	if (mongoFilter.soldiers)
-		mongoFilter.soldiers = { $all: mongoFilter.soldiers };
-
 	return dutiesCollection().find(mongoFilter).toArray();
 }
 
-// export async function findById (filter = {}) {
-// 		return collection.findOne(filter);
-// 	}
+export async function findById(id = {}) {
+	return dutiesCollection().findOne({ _id: new ObjectId(id) });
+}
 
 // export async function deleteById (idObject) {
 // 		return collection.deleteOne(idObject);
