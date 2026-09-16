@@ -55,29 +55,36 @@ dutiesRouter.get(
 	},
 );
 
-// dutiesRouter.delete("/:id", async (req, res) => {
-// 	objectIdSchema.parse({ _id: req.params.id });
+dutiesRouter.delete(
+	"/:id",
+	validate({ params: objectIdSchema }),
+	async (req, res) => {
+		const dutyId = req.validatedParams.id;
 
-// 	const validatedId = { _id: new ObjectId(req.params.id) };
+		const dutyFound = await dutiesRepository.findById(dutyId);
 
-// 	const dutyCollection = connectDutiesCollection(client);
+		if (dutyFound?.status === "scheduled") {
+			req.log.warn({ dutyId }, "request failed. duty was scheduled.");
 
-// 	const dutyFound = await dutyCollection.findById(validatedId);
+			return res
+				.status(404)
+				.json({ status: "error", message: "scheduled duty can't be deleted" });
+		}
 
-// 	if (dutyFound?.status === "scheduled")
-// 		return res
-// 			.status(404)
-// 			.json({ status: "error", message: "scheduled duty can't be deleted" });
+		const deleteResponse = await dutiesRepository.deleteById(dutyId);
 
-// 	const deleteResponse = await dutyCollection.deleteById(validatedId);
+		if (!deleteResponse.deletedCount) {
+			req.log.warn({ dutyId }, "request failed. duty id wasn't found.");
 
-// 	if (!deleteResponse.deletedCount)
-// 		return res
-// 			.status(404)
-// 			.json({ status: "error", message: "duty wasn't found." });
+			return res
+				.status(404)
+				.json({ status: "error", message: "duty wasn't found." });
+		}
+		req.log.info({ dutyFound }, "duty deleted successfully.");
 
-// 	return res.sendStatus(204);
-// });
+		return res.sendStatus(204);
+	},
+);
 
 // dutiesRouter.patch("/:id", async (req, res) => {
 // 	objectIdSchema.parse({ _id: req.params.id });

@@ -27,9 +27,10 @@ export async function findById(id = {}) {
 	return dutiesCollection().findOne({ _id: new ObjectId(id) });
 }
 
-// export async function deleteById (idObject) {
-// 		return collection.deleteOne(idObject);
-// 	}
+export async function deleteById(id) {
+	console.log(id);
+	return dutiesCollection().deleteOne({ _id: new ObjectId(id) });
+}
 
 // export async function updateById (idObject, newDuty) {
 // 		return collection.updateOne(idObject, { $set: newDuty });
