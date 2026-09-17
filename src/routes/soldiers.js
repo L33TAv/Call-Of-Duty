@@ -2,6 +2,8 @@ import express from "express";
 import * as soldiersRepository from "../db/soldiersDB.js";
 import { validate } from "../middleware/validate.js";
 import {
+	NAME_TO_RANK,
+	RANK_NAMES,
 	soldierIdSchema,
 	soldierLimitationSchema,
 	soldierPatchSchema,
@@ -11,11 +13,27 @@ import {
 
 const soldiersRouter = express.Router();
 
+function addRankOrValue(rankName, rankValue) {
+	if (rankValue === undefined && rankName === undefined) return undefined;
+
+	return rankName !== undefined
+		? { rank: { name: rankName, value: NAME_TO_RANK[rankName] } }
+		: { rank: { name: RANK_NAMES[rankValue], value: rankValue } };
+}
+
 soldiersRouter.post(
 	"/",
 	validate({ body: soldierSchema }),
 	async (req, res) => {
-		const newSoldier = req.validatedBody;
+		const { rankName, rankValue, ...rest } = req.validatedBody;
+
+		const newSoldier = { ...rest, ...addRankOrValue(rankName, rankValue) };
+
+		req.log.info(
+			{ soldierId: newSoldier.id, soldierName: newSoldier.name },
+			"adding new soldier.",
+		);
+
 		await soldiersRepository.insertOne(newSoldier);
 
 		req.log.info(
@@ -32,6 +50,9 @@ soldiersRouter.get(
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
 		const soldierId = req.validatedParams.id;
+
+		req.log.info({ soldierId }, "searching for a soldier by id.");
+
 		const soldierInDB = await soldiersRepository.findById(soldierId);
 
 		if (!soldierInDB) {
@@ -42,7 +63,7 @@ soldiersRouter.get(
 
 			return res
 				.status(404)
-				.json({ status: "error", message: "soldier was not found." });
+				.json({ status: "error", message: "soldier wasn't found." });
 		}
 
 		req.log.info({ soldierId }, "soldier found successfully.");
@@ -57,9 +78,11 @@ soldiersRouter.get(
 	async (req, res) => {
 		const soldierQuery = req.validatedQuery;
 
+		req.log.info({ soldierQuery }, "searching for a soldier by query.");
+
 		const soldiersFound = await soldiersRepository.find(soldierQuery);
 
-		req.log.info({ soldierQuery }, "soldier found successfully.");
+		req.log.info({ soldierQuery }, "soldier/s found successfully.");
 
 		return res.status(200).json(soldiersFound);
 	},
@@ -70,6 +93,9 @@ soldiersRouter.delete(
 	validate({ params: soldierIdSchema }),
 	async (req, res) => {
 		const soldierId = req.validatedParams.id;
+
+		req.log.info({ soldierId }, "deleting a soldier by id.");
+
 		const deleteResult = await soldiersRepository.deleteById(soldierId);
 
 		if (deleteResult.deletedCount !== 1) {
@@ -97,7 +123,13 @@ soldiersRouter.patch(
 	validate({ params: soldierIdSchema, body: soldierPatchSchema }),
 	async (req, res) => {
 		const soldierId = req.validatedParams.id;
-		const patchedSoldier = req.validatedBody;
+
+		const { rankName, rankValue, ...rest } = req.validatedBody;
+
+		const patchedSoldier = { ...rest, ...addRankOrValue(rankName, rankValue) };
+
+		req.log.info({ soldierId }, "patching a soldier by id.");
+
 		const patchResult = await soldiersRepository.updateById(
 			soldierId,
 			patchedSoldier,
@@ -130,7 +162,10 @@ soldiersRouter.put(
 	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
 	async (req, res) => {
 		const soldierId = req.validatedParams.id;
-		const newLimitations = req.validatedBody;
+		const newLimitations = req.validatedBody.limitations;
+
+		req.log.info({ soldierId }, "patching new limitations by id.");
+
 		const patchResult = await soldiersRepository.updateLimitationsById(
 			soldierId,
 			newLimitations,
