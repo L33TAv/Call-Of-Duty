@@ -132,30 +132,7 @@ const soldierPatchSchema = baseSoldierObject
 		{
 			message: "rankValue or rankName doesn't match the requirements.",
 		},
-	)
-	.transform((data) => {
-		const result = { ...data };
-		const rankName = result.rankName;
-		const rankValue = result.rankValue;
-
-		const hasRank = rankValue !== undefined || rankName !== undefined;
-
-		if (hasRank) {
-			const finalValue =
-				rankValue !== undefined ? rankValue : NAME_TO_RANK[rankName];
-			const finalName =
-				rankName !== undefined ? rankName : RANK_NAMES[finalValue];
-
-			result.rank = {
-				name: finalName,
-				value: finalValue,
-			};
-			delete result.rankValue;
-			delete result.rankName;
-		}
-
-		return result;
-	});
+	);
 
 export {
 	soldierIdSchema,

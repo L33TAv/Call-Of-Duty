@@ -197,9 +197,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 200 when soldier found", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app).get(
 				`/soldiers/${validSoldierDocument._id}`,
@@ -207,21 +207,19 @@ describe("Test /soldiers endpoints", () => {
 
 			expect(response.statusCode).toBe(200);
 
-			const { createdAt, updatedAt, ...expectedFields } = validSoldierDocument;
-
 			expect(response.body).toEqual({
-				...expectedFields,
-				createdAt: expect.any(String),
-				updatedAt: expect.any(String),
+				...validSoldierDocument,
+				createdAt: validSoldierDocument.createdAt.toISOString(),
+				updatedAt: validSoldierDocument.updatedAt.toISOString(),
 			});
 		});
 
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			vi.spyOn(soldiersRepository, "findById").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -239,9 +237,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 400 when id isn't valid - not a number", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app).get(`/soldiers/notValidId`);
 			expect(response.statusCode).toBe(400);
@@ -253,9 +251,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 400 when id isn't valid - length", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app).get(`/soldiers/1234`);
 			expect(response.statusCode).toBe(400);
@@ -266,7 +264,7 @@ describe("Test /soldiers endpoints", () => {
 			const response = await request(app).get(`/soldiers/0000000`);
 
 			expect(response.statusCode).toBe(404);
-			expect(response.body.message).toContain("soldier was not found.");
+			expect(response.body.message).toContain("soldier wasn't found.");
 		});
 	});
 
@@ -277,17 +275,13 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument2 = createSoldierDocument({ name });
 			const validSoldierDocument3 = createSoldierDocument({ name: "daniel" });
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
-
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument2,
-			});
-
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument3,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertMany([
+					validSoldierDocument,
+					validSoldierDocument2,
+					validSoldierDocument3,
+				]);
 
 			const response = await request(app).get(`/soldiers?name=${name}`);
 
@@ -295,13 +289,9 @@ describe("Test /soldiers endpoints", () => {
 
 			expect(response.body.length).toBe(2);
 
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						name,
-					}),
-				]),
-			);
+			expect(
+				response.body.every((soldierFound) => soldierFound.name === name),
+			).toBe(true);
 		});
 
 		it("should return 200 when limitations are given", async () => {
@@ -315,17 +305,13 @@ describe("Test /soldiers endpoints", () => {
 				limitations: ["food"],
 			});
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
-
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument2,
-			});
-
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument3,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertMany([
+					validSoldierDocument,
+					validSoldierDocument2,
+					validSoldierDocument3,
+				]);
 
 			const response = await request(app).get(`/soldiers?limitations=food`);
 
@@ -333,21 +319,19 @@ describe("Test /soldiers endpoints", () => {
 
 			expect(response.body.length).toBe(2);
 
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						limitations: ["food"],
-					}),
-				]),
-			);
+			expect(
+				response.body.every((soldierFound) =>
+					soldierFound.limitations.includes("food"),
+				),
+			).toBe(true);
 		});
 
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			vi.spyOn(soldiersRepository, "find").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -363,9 +347,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 400 when no search query is given", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app).get(`/soldiers`);
 
@@ -425,9 +409,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 204 when soldier was deleted", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app).delete(
 				`/soldiers/${validSoldierDocument._id}`,
@@ -444,9 +428,9 @@ describe("Test /soldiers endpoints", () => {
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			vi.spyOn(soldiersRepository, "deleteById").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -465,7 +449,7 @@ describe("Test /soldiers endpoints", () => {
 			const response = await request(app).delete(`/soldiers/0000000`);
 
 			expect(response.statusCode).toBe(404);
-			expect(response.body.message).toContain("");
+			expect(response.body.message).toContain("soldier wasn't found");
 			expect(response.body.status).toBe("error");
 		});
 
@@ -506,13 +490,11 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body._id).toBe(validSoldierDocument._id);
 			expect(response.body.name).toBe(newPatch.name);
-			expect(response.body.limitations).toEqual(
-				expect.arrayContaining(newPatch.limitations),
-			);
+			expect(response.body.limitations).toEqual(newPatch.limitations);
 
 			const newUpdated = new Date(response.body.updatedAt);
 
-			expect(newUpdated).not.toBe(updatedAt);
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
 		});
 
 		it("should return 200 when the soldier limitations were patched", async () => {
@@ -535,17 +517,15 @@ describe("Test /soldiers endpoints", () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body._id).toBe(validSoldierDocument._id);
 			expect(response.body.name).toBe(newPatch.name);
-			expect(response.body.limitations).toEqual(
-				expect.arrayContaining(newPatch.limitations),
-			);
+			expect(response.body.limitations).toEqual(newPatch.limitations);
 
 			const newUpdated = new Date(response.body.updatedAt);
 
-			expect(newUpdated).not.toBe(updatedAt);
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
 		});
 
 		it("should return 200 when the soldier rankName was patched", async () => {
-			const validSoldierDocument = createSoldierDocument({});
+			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { rankName: "lieutenant" };
 
 			const updatedAt = new Date();
@@ -566,7 +546,7 @@ describe("Test /soldiers endpoints", () => {
 
 			const newUpdated = new Date(response.body.updatedAt);
 
-			expect(newUpdated).not.toBe(updatedAt);
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
 		});
 
 		it("should return 200 and clear limitations when empty array is provided", async () => {
@@ -574,8 +554,11 @@ describe("Test /soldiers endpoints", () => {
 				limitations: ["food", "walking"],
 			});
 
+			const updatedAt = new Date();
+
 			await soldiersRepository.soldiersCollection().insertOne({
 				...validSoldierDocument,
+				updatedAt,
 			});
 
 			const response = await request(app)
@@ -584,15 +567,19 @@ describe("Test /soldiers endpoints", () => {
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.limitations).toEqual([]);
+
+			const newUpdated = new Date(response.body.updatedAt);
+
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
 		});
 
 		it("should return 503 when fails connect to DB", async () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { name: "bobi" };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			vi.spyOn(soldiersRepository, "updateById").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -621,9 +608,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { _id: "1234567" };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.patch(`/soldiers/${validSoldierDocument._id}`)
@@ -638,9 +625,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { notRealProperty: "avocado" };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.patch(`/soldiers/${validSoldierDocument._id}`)
@@ -654,9 +641,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newPatch = { name: "a" };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.patch(`/soldiers/${validSoldierDocument._id}`)
@@ -747,9 +734,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: ["food"] };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			vi.spyOn(soldiersRepository, "updateLimitationsById").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -768,9 +755,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: [1, "walking"] };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
@@ -785,9 +772,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: "water" };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
@@ -802,9 +789,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: [] };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
@@ -819,9 +806,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: ["water", "water"] };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.put(`/soldiers/${validSoldierDocument._id}/limitations`)
@@ -836,9 +823,9 @@ describe("Test /soldiers endpoints", () => {
 			const validSoldierDocument = createSoldierDocument();
 			const newLimitations = { limitations: ["food", "water"] };
 
-			await soldiersRepository.soldiersCollection().insertOne({
-				...validSoldierDocument,
-			});
+			await soldiersRepository
+				.soldiersCollection()
+				.insertOne(validSoldierDocument);
 
 			const response = await request(app)
 				.put(`/soldiers/notValidId/limitations`)
