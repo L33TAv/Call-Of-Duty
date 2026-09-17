@@ -51,41 +51,20 @@ const baseSoldierObject = z
 	})
 	.strict();
 
-const soldierSchema = baseSoldierObject
-	.refine(
-		(data) => {
-			const rankName = data.rankName;
-			const rankValue = data.rankValue;
+const soldierSchema = baseSoldierObject.refine(
+	(data) => {
+		const rankName = data.rankName;
+		const rankValue = data.rankValue;
 
-			if (rankName !== undefined && rankValue !== undefined)
-				return RANK_NAMES[rankValue] === rankName;
-			if (rankName === undefined && rankValue === undefined) return false;
-			return true;
-		},
-		{
-			message: "rankValue or rankName doesn't match the requirements.",
-		},
-	)
-	.transform((data) => {
-		const result = { ...data };
-		const rankName = result.rankName;
-		const rankValue = result.rankValue;
-
-		const finalValue =
-			rankValue !== undefined ? rankValue : NAME_TO_RANK[rankName];
-		const finalName =
-			rankName !== undefined ? rankName : RANK_NAMES[finalValue];
-
-		result.rank = {
-			name: finalName,
-			value: finalValue,
-		};
-
-		delete result.rankValue;
-		delete result.rankName;
-
-		return result;
-	});
+		if (rankName !== undefined && rankValue !== undefined)
+			return RANK_NAMES[rankValue] === rankName;
+		if (rankName === undefined && rankValue === undefined) return false;
+		return true;
+	},
+	{
+		message: "rankValue or rankName doesn't match the requirements.",
+	},
+);
 
 const soldierQuerySchema = baseSoldierObject
 	.omit({ _id: true })
@@ -132,32 +111,11 @@ const soldierPatchSchema = baseSoldierObject
 		{
 			message: "rankValue or rankName doesn't match the requirements.",
 		},
-	)
-	.transform((data) => {
-		const result = { ...data };
-		const rankName = result.rankName;
-		const rankValue = result.rankValue;
-
-		const hasRank = rankValue !== undefined || rankName !== undefined;
-
-		if (hasRank) {
-			const finalValue =
-				rankValue !== undefined ? rankValue : NAME_TO_RANK[rankName];
-			const finalName =
-				rankName !== undefined ? rankName : RANK_NAMES[finalValue];
-
-			result.rank = {
-				name: finalName,
-				value: finalValue,
-			};
-			delete result.rankValue;
-			delete result.rankName;
-		}
-
-		return result;
-	});
+	);
 
 export {
+	NAME_TO_RANK,
+	RANK_NAMES,
 	soldierIdSchema,
 	soldierLimitationSchema,
 	soldierPatchSchema,
