@@ -16,6 +16,9 @@ soldiersRouter.post(
 	validate({ body: soldierSchema }),
 	async (req, res) => {
 		const newSoldier = req.validatedBody;
+
+		req.log.info({ newSoldier }, "adding new soldier.");
+
 		await soldiersRepository.insertOne(newSoldier);
 
 		req.log.info({ newSoldier }, "successfully added new soldier.");
@@ -39,7 +42,7 @@ soldiersRouter.get(
 
 			return res
 				.status(404)
-				.json({ status: "error", message: "soldier was not found." });
+				.json({ status: "error", message: "soldier wasn't found." });
 		}
 
 		req.log.info({ soldierId }, "soldier found successfully.");
@@ -127,7 +130,7 @@ soldiersRouter.put(
 	validate({ params: soldierIdSchema, body: soldierLimitationSchema }),
 	async (req, res) => {
 		const soldierId = req.validatedParams.id;
-		const newLimitations = req.validatedBody;
+		const newLimitations = req.validatedBody.limitations;
 		const patchResult = await soldiersRepository.updateLimitationsById(
 			soldierId,
 			newLimitations,

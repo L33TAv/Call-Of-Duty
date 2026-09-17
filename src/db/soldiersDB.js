@@ -16,18 +16,17 @@ export async function findById(id) {
 }
 
 export async function find(filter = {}) {
-	const mongoFilter = { ...filter };
+	const { limitations, rankValue, rankName, ...rest } = filter;
 
-	if (mongoFilter.limitations)
-		mongoFilter.limitations = { $all: mongoFilter.limitations };
-	if (mongoFilter.rankValue !== undefined) {
-		mongoFilter["rank.value"] = mongoFilter.rankValue;
-		delete mongoFilter.rankValue;
-	}
-	if (mongoFilter.rankName !== undefined) {
-		mongoFilter["rank.name"] = mongoFilter.rankName;
-		delete mongoFilter.rankName;
-	}
+	const mongoFilter = {
+		...rest,
+		...(limitations !== undefined
+			? { limitations: { $all: limitations } }
+			: {}),
+		...(rankValue !== undefined ? { "rank.value": rankValue } : {}),
+		...(rankName !== undefined ? { "rank.name": rankName } : {}),
+	};
+
 	return soldiersCollection().find(mongoFilter).toArray();
 }
 
@@ -35,12 +34,15 @@ export async function deleteById(id) {
 	return soldiersCollection().deleteOne({ _id: id });
 }
 
-export async function updateById(id, newSoldier) {
-	newSoldier.updatedAt = new Date();
-	return soldiersCollection().updateOne({ _id: id }, { $set: newSoldier });
+export async function updateById(id, updateProperties) {
+	updateProperties.updatedAt = new Date();
+	return soldiersCollection().updateOne(
+		{ _id: id },
+		{ $set: updateProperties },
+	);
 }
 
-export async function updateLimitationsById(id, { limitations }) {
+export async function updateLimitationsById(id, limitations) {
 	return soldiersCollection().updateOne(
 		{ _id: id },
 		{
