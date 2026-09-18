@@ -8,7 +8,7 @@ export const dutiesCollection = () => {
 export async function insertOne(duty) {
 	duty.soldiers = [];
 	duty.status = "unscheduled";
-	duty.statusHistory = ["unscheduled", new Date()];
+	duty.statusHistory = [{ status: "unscheduled", date: new Date() }];
 	duty.createdAt = new Date();
 	duty.updatedAt = new Date();
 	return dutiesCollection().insertOne(duty);
@@ -28,10 +28,14 @@ export async function findById(id = {}) {
 }
 
 export async function deleteById(id) {
-	console.log(id);
 	return dutiesCollection().deleteOne({ _id: new ObjectId(id) });
 }
 
-// export async function updateById (idObject, newDuty) {
-// 		return collection.updateOne(idObject, { $set: newDuty });
-// 	}
+export async function updateById(id, updatedProperties) {
+	updatedProperties.updatedAt = new Date();
+
+	return dutiesCollection().updateOne(
+		{ _id: new ObjectId(id) },
+		{ $set: updatedProperties },
+	);
+}

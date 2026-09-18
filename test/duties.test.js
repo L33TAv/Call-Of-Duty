@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { MongoNetworkError, ObjectId } from "mongodb";
 import request from "supertest";
 import {
@@ -37,7 +38,7 @@ function createDutyDocument(override = {}) {
 		value: 5,
 		soldiers: [],
 		status: "unscheduled",
-		statusHistory: ["unscheduled", new Date()],
+		statusHistory: [{ status: "unscheduled", date: new Date() }],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...override,
@@ -52,7 +53,7 @@ function createDutyBody(override = {}) {
 	const endTime = new Date(startTime.getTime() + ONE_DAY);
 
 	const body = {
-		name: "bobi",
+		name: "avtash",
 		description: "nada",
 		location: {
 			type: "Point",
@@ -105,7 +106,7 @@ describe("Test /duties endpoints", () => {
 				endTime: expect.any(String),
 				soldiers: [],
 				status: "unscheduled",
-				statusHistory: ["unscheduled", expect.any(String)],
+				statusHistory: [{ status: "unscheduled", date: expect.any(String) }],
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -124,7 +125,7 @@ describe("Test /duties endpoints", () => {
 				endTime: expect.any(String),
 				soldiers: [],
 				status: "unscheduled",
-				statusHistory: ["unscheduled", expect.any(String)],
+				statusHistory: [{ status: "unscheduled", date: expect.any(String) }],
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
@@ -157,6 +158,7 @@ describe("Test /duties endpoints", () => {
 		});
 
 		const badScenarios = [
+			createScenario("unknown property", { unknown: "hi" }, "unknown"),
 			createScenario("name is missing", { name: undefined }, "name"),
 			createScenario("value is missing", { value: undefined }, "value"),
 			createScenario("name size is invalid", { name: "a" }, "name"),
@@ -235,26 +237,20 @@ describe("Test /duties endpoints", () => {
 
 			const dutyDocument2 = createDutyDocument({ name });
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			const dutyDocument3 = createDutyDocument({ name });
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument2,
-			});
+			await dutiesRepository
+				.dutiesCollection()
+				.insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
 
 			const response = await request(app).get(`/duties?name=${name}`);
 
 			expect(response.statusCode).toBe(200);
 
-			expect(response.body.length).toBe(1);
+			expect(response.body.length).toBe(2);
 
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						name,
-					}),
-				]),
+			expect(response.body.every((dutyFound) => dutyFound.name === name)).toBe(
+				true,
 			);
 		});
 
@@ -268,17 +264,9 @@ describe("Test /duties endpoints", () => {
 
 			const dutyDocument3 = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
-
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument2,
-			});
-
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument3,
-			});
+			await dutiesRepository
+				.dutiesCollection()
+				.insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
 
 			const response = await request(app).get(
 				`/duties?constraints=${[...constraints]}`,
@@ -288,13 +276,11 @@ describe("Test /duties endpoints", () => {
 
 			expect(response.body.length).toBe(2);
 
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						constraints,
-					}),
-				]),
-			);
+			expect(
+				response.body.every((dutyFound) =>
+					dutyFound.constraints.includes(...constraints),
+				),
+			).toBe(true);
 		});
 
 		it("should return 200 when location is given", async () => {
@@ -308,13 +294,9 @@ describe("Test /duties endpoints", () => {
 				location: { type: "Point", coordinates: [33, 12.5] },
 			});
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
-
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument2,
-			});
+			await dutiesRepository
+				.dutiesCollection()
+				.insertMany([dutyDocument, dutyDocument2]);
 
 			const response = await request(app).get(`/duties?location=33,12`);
 
@@ -322,21 +304,17 @@ describe("Test /duties endpoints", () => {
 
 			expect(response.body.length).toBe(1);
 
-			expect(response.body).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						location,
-					}),
-				]),
-			);
+			expect(
+				response.body.every((dutyFound) =>
+					isDeepStrictEqual(dutyFound.location, location),
+				),
+			).toBe(true);
 		});
 
 		it("should return 503 when fails connect to DB", async () => {
 			const dutyDocument = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
 
 			vi.spyOn(dutiesRepository, "find").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -351,9 +329,7 @@ describe("Test /duties endpoints", () => {
 		it("should return 400 when no search query is given", async () => {
 			const dutyDocument = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
 
 			const response = await request(app).get(`/duties`);
 
@@ -525,13 +501,11 @@ describe("Test /duties endpoints", () => {
 	});
 
 	describe("Test GET /duties/:id endpoint", () => {
-		it("should return 200 when soldier found", async () => {
+		it("should return 200 when duty found", async () => {
 			const id = new ObjectId();
 			const dutyDocument = createDutyDocument({ _id: id });
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
 
 			const response = await request(app).get(
 				`/duties/${dutyDocument._id.toString()}`,
@@ -556,7 +530,7 @@ describe("Test /duties endpoints", () => {
 				updatedAt: expect.any(String),
 				startTime: expect.any(String),
 				endTime: expect.any(String),
-				statusHistory: ["unscheduled", expect.any(String)],
+				statusHistory: [{ status: "unscheduled", date: expect.any(String) }],
 			});
 		});
 
@@ -564,9 +538,7 @@ describe("Test /duties endpoints", () => {
 			const id = new ObjectId();
 			const dutyDocument = createDutyDocument({ _id: id });
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
 
 			vi.spyOn(dutiesRepository, "findById").mockRejectedValue(
 				new MongoNetworkError("failed to connect to server on first connect"),
@@ -581,28 +553,9 @@ describe("Test /duties endpoints", () => {
 			expect(response.body.message).toContain("database error");
 		});
 
-		it("should return 400 when id isn't valid - not a number", async () => {
-			const id = new ObjectId();
-			const dutyDocument = createDutyDocument({ _id: id });
-
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
-
-			const response = await request(app).get(`/duties/notValidId`);
-			expect(response.statusCode).toBe(400);
-			expect(response.body.issues).toContain("id");
-		});
-
-		it("should return 400 when id isn't valid - not a  BSON data type", async () => {
-			const id = new ObjectId();
-			const dutyDocument = createDutyDocument({ _id: id });
-
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
-
+		it("should return 400 when the id isn't valid - not a  BSON data type", async () => {
 			const response = await request(app).get(`/duties/1234567`);
+
 			expect(response.statusCode).toBe(400);
 			expect(response.body.issues).toContain("id");
 		});
@@ -611,15 +564,411 @@ describe("Test /duties endpoints", () => {
 			const id = new ObjectId();
 			const dutyDocument = createDutyDocument({ _id: id });
 
-			await dutiesRepository.dutiesCollection().insertOne({
-				...dutyDocument,
-			});
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
 
 			const response = await request(app).get(
 				`/duties/${new ObjectId().toString()}`,
 			);
 			expect(response.statusCode).toBe(404);
 			expect(response.body.message).toContain("duty was not found.");
+		});
+	});
+
+	describe("Test DELETE /duties/:id endpoint", () => {
+		it("should return 204 when duty was deleted", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			const dutyInDB = await dutiesRepository
+				.dutiesCollection()
+				.findOne({ _id: id });
+
+			expect(response.statusCode).toBe(204);
+			expect(dutyInDB).toBe(null);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			vi.spyOn(dutiesRepository, "deleteById").mockRejectedValue(
+				new MongoNetworkError("failed to connect to server on first connect"),
+			);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 404 when duty was not found", async () => {
+			const response = await request(app).delete(`/duties/${new ObjectId()}`);
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("duty wasn't found.");
+			expect(response.body.status).toBe("error");
+		});
+
+		it("should return 400 when the id isn't valid - not a  BSON data type", async () => {
+			const response = await request(app).delete(`/duties/1234567`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 409 when duty is scheduled", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id, status: "scheduled" });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			expect(response.statusCode).toBe(409);
+			expect(response.body.message).toContain(
+				"scheduled duty can't be deleted.",
+			);
+		});
+	});
+
+	describe("Test PATCH /duties/:id endpoint", () => {
+		it("should return 200 when duty was patched", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = {
+				location: {
+					type: "Point",
+					coordinates: [15.0, 10.0],
+				},
+				soldiersRequired: 3,
+			};
+
+			const updatedAt = new Date();
+
+			await dutiesRepository
+				.dutiesCollection()
+				.insertOne({ ...dutyDocument, updatedAt });
+
+			const response = await request(app)
+				.patch(`/duties/${id}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body._id).toBe(dutyDocument._id.toString());
+			expect(response.body.soldiersRequired).toBe(dutyPatch.soldiersRequired);
+			expect(response.body.location).toEqual(dutyPatch.location);
+
+			const newUpdated = new Date(response.body.updatedAt);
+
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
+		});
+
+		it("should return 200 when duty was patched - with same values", async () => {
+			const id = new ObjectId();
+			const dutyPatch = { name: "avtash" };
+			const dutyDocument = createDutyDocument({
+				_id: id,
+				name: dutyPatch.name,
+			});
+
+			const updatedAt = new Date();
+
+			await dutiesRepository
+				.dutiesCollection()
+				.insertOne({ ...dutyDocument, updatedAt });
+
+			const response = await request(app)
+				.patch(`/duties/${id}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body._id).toBe(dutyDocument._id.toString());
+			expect(response.body.name).toBe(dutyPatch.name);
+
+			const newUpdated = new Date(response.body.updatedAt);
+
+			expect(newUpdated.getTime()).toBeGreaterThan(updatedAt.getTime());
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = { name: "avtash" };
+
+			await dutiesRepository.dutiesCollection().insertOne({
+				...dutyDocument,
+			});
+
+			vi.spyOn(dutiesRepository, "updateById").mockRejectedValue(
+				new MongoNetworkError("failed to connect to server on first connect"),
+			);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 404 when duty was not found", async () => {
+			const dutyPatch = { name: "avtash" };
+
+			const response = await request(app)
+				.patch(`/duties/${new ObjectId().toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("duty wasn't found.");
+			expect(response.body.status).toBe("error");
+		});
+
+		it("should return 409 when duty is scheduled", async () => {
+			const id = new ObjectId();
+			const dutyPatch = { name: "eat" };
+			const dutyDocument = createDutyDocument({ _id: id, status: "scheduled" });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(409);
+			expect(response.body.message).toContain(
+				"scheduled duty can't be changed.",
+			);
+		});
+
+		it("should return 400 when the id isn't valid - not a  BSON data type", async () => {
+			const response = await request(app).patch(`/duties/1234567`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 400 when patch unknown propery", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = {
+				_id: 1234567,
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("_id");
+		});
+
+		it("should return 400 when parameters aren't valid", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = {
+				name: "a",
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("name");
+		});
+
+		it("should return 400 when given empty patch", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send({});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"At least one property must be provided",
+			);
+		});
+
+		it("should return 400 when patch isn't valid - start time after existing end time", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({
+				_id: id,
+				startTime: new Date(Date.now() + ONE_DAY),
+				endTime: new Date(Date.now() + 2 * ONE_DAY),
+			});
+
+			const dutyPatch = { startTime: new Date(Date.now() + 3 * ONE_DAY) };
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"End time must be after the start time",
+			);
+		});
+
+		it("should return 400 when patch isn't valid - end time before existing start time", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({
+				_id: id,
+				startTime: new Date(Date.now() + ONE_DAY),
+				endTime: new Date(Date.now() + 2 * ONE_DAY),
+			});
+
+			const dutyPatch = { endTime: new Date(Date.now() + ONE_DAY * 0.5) };
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"End time must be after the start time",
+			);
+		});
+
+		it("should return 400 when patch isn't valid - start time", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = { startTime: new Date(Date.now() - ONE_DAY) };
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"Start time must be in the future",
+			);
+		});
+
+		it("should return 400 when patch isn't valid - end time", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = { endTime: new Date(Date.now() - ONE_DAY) };
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("End time must be in the future");
+		});
+
+		it("should return 400 when patch isn't valid - end time is before start time", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = {
+				startTime: new Date(Date.now() + 2 * ONE_DAY),
+				endTime: new Date(Date.now() + ONE_DAY),
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain(
+				"End time must be after the start time",
+			);
+		});
+
+		it("should return 400 when patch isn't valid - minRank is bigger than maxRank", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			const dutyPatch = {
+				minRank: 5,
+				maxRank: 3,
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("minRank must be below maxRank");
+		});
+
+		it("should return 400 when patch isn't valid - minRank is bigger than existing maxRank", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({
+				_id: id,
+				minRank: 2,
+				maxRank: 3,
+			});
+
+			const dutyPatch = {
+				minRank: 5,
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("minRank must be below maxRank");
+		});
+
+		it("should return 400 when patch isn't valid - maxRank is smaller than existing minRank", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({
+				_id: id,
+				minRank: 2,
+				maxRank: 3,
+			});
+
+			const dutyPatch = {
+				maxRank: 1,
+			};
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app)
+				.patch(`/duties/${id.toString()}`)
+				.send(dutyPatch);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("minRank must be below maxRank");
 		});
 	});
 });

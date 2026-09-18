@@ -48,7 +48,12 @@ const baseDutySchema = z
 			.refine((val) => new Date(val) > new Date(), {
 				message: "Start time must be in the future",
 			}),
-		endTime: z.string().datetime(),
+		endTime: z
+			.string()
+			.datetime()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "End time must be in the future",
+			}),
 		constraints: constraintsSchema,
 		soldiersRequired: z.number().positive(),
 		value: z.number().positive(),
@@ -122,17 +127,6 @@ const getDutySchema = baseDutySchema
 			path: ["endTime"],
 		},
 	)
-	.refine(
-		(data) => {
-			if (data.startTime === undefined && data.endTime !== undefined)
-				return new Date(data.endTime) > new Date();
-			return true;
-		},
-		{
-			message: "End time must be in the future",
-			path: ["endTime"],
-		},
-	)
 	.refine((data) => rankRefine(data), {
 		message: "minRank must be below maxRank",
 	})
@@ -145,8 +139,20 @@ const patchDutyScehma = z
 		name: z.string().min(3).max(50).optional(),
 		description: z.string().min(1).max(100).optional(),
 		location: GeoJsonPointSchema.optional(),
-		startTime: z.string().datetime().optional(),
-		endTime: z.string().datetime().optional(),
+		startTime: z
+			.string()
+			.datetime()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "Start time must be in the future",
+			})
+			.optional(),
+		endTime: z
+			.string()
+			.datetime()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "End time must be in the future",
+			})
+			.optional(),
 		constraints: z.array(z.string()).optional(),
 		soldiersRequired: z.coerce.number().positive().optional(),
 		value: z.coerce.number().positive().optional(),
@@ -167,7 +173,30 @@ const patchDutyScehma = z
 	.refine((data) => Object.keys(data).length > 0, {
 		message: "At least one property must be provided",
 	})
-	.refine((data) => rankRefine(data));
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	});
+
+const patchTimeOrRankSchema = z
+	.object({
+		startTime: z.string().datetime(),
+		endTime: z.string().datetime(),
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+	})
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	})
+	.refine(
+		(data) => {
+			if (data.startTime && data.endTime) return data.startTime < data.endTime;
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	);
 
 export {
 	dutyScehma,
@@ -175,4 +204,5 @@ export {
 	getDutySchema,
 	objectIdSchema,
 	patchDutyScehma,
+	patchTimeOrRankSchema,
 };

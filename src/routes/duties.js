@@ -1,5 +1,4 @@
 import express from "express";
-import { ObjectId } from "mongodb";
 import * as dutiesRepository from "../db/dutiesDB.js";
 import { validate } from "../middleware/validate.js";
 
@@ -8,8 +7,8 @@ import {
 	getDutySchema,
 	objectIdSchema,
 	patchDutyScehma,
+	patchTimeOrRankSchema,
 } from "../schemas/duties.js";
-import { soldierIdSchema } from "../schemas/soldiers.js";
 
 const dutiesRouter = express.Router();
 
@@ -24,7 +23,7 @@ dutiesRouter.post("/", validate({ body: dutyScehma }), async (req, res) => {
 });
 
 dutiesRouter.get("/", validate({ query: getDutySchema }), async (req, res) => {
-	const dutyQuery = getDutySchema.parse({ ...req.query });
+	const dutyQuery = req.validatedQuery;
 
 	const dutiesInDb = await dutiesRepository.find(dutyQuery);
 
@@ -64,11 +63,11 @@ dutiesRouter.delete(
 		const dutyFound = await dutiesRepository.findById(dutyId);
 
 		if (dutyFound?.status === "scheduled") {
-			req.log.warn({ dutyId }, "request failed. duty was scheduled.");
+			req.log.warn({ dutyId }, "delete request failed. duty was scheduled.");
 
 			return res
-				.status(404)
-				.json({ status: "error", message: "scheduled duty can't be deleted" });
+				.status(409)
+				.json({ status: "error", message: "scheduled duty can't be deleted." });
 		}
 
 		const deleteResponse = await dutiesRepository.deleteById(dutyId);
@@ -86,36 +85,57 @@ dutiesRouter.delete(
 	},
 );
 
-// dutiesRouter.patch("/:id", async (req, res) => {
-// 	objectIdSchema.parse({ _id: req.params.id });
+dutiesRouter.patch(
+	"/:id",
+	validate({ params: objectIdSchema, body: patchDutyScehma }),
+	async (req, res) => {
+		const dutyId = req.validatedParams.id;
+		const patchedDuty = req.validatedBody;
 
-// 	const validatedId = { _id: new ObjectId(req.params.id) };
+		const dutyFound = await dutiesRepository.findById(dutyId);
 
-// 	const dutyCollection = connectDutiesCollection(client);
+		if (!dutyFound) {
+			req.log.warn({ dutyId }, "patch request failed. duty wasn't found.");
 
-// 	const dutyFound = await dutyCollection.findById(validatedId);
+			return res.status(404).json({
+				status: "error",
+				message: "duty wasn't found.",
+			});
+		}
 
-// 	if (dutyFound?.status === "scheduled")
-// 		return res
-// 			.status(404)
-// 			.json({ status: "error", message: "scheduled duty can't be changed" });
+		if (dutyFound.status === "scheduled") {
+			req.log.warn({ dutyId }, "patch request failed. duty was scheduled.");
 
-// 	const validatedDuty = patchDutyScehma.parse(req.body);
+			return res
+				.status(409)
+				.json({ status: "error", message: "scheduled duty can't be changed." });
+		}
 
-// 	const patchResponse = await dutyCollection.updateById(
-// 		validatedId,
-// 		validatedDuty,
-// 	);
+		patchTimeOrRankSchema.parse({
+			startTime: dutyFound.startTime.toISOString(),
+			endTime: dutyFound.endTime.toISOString(),
+			minRank: dutyFound.minRank,
+			maxRank: dutyFound.maxRank,
+			...patchedDuty,
+		});
 
-// 	if (!(patchResponse.modifiedCount === 1))
-// 		return res.status(404).json({
-// 			status: "error",
-// 			message: "duty wasn't found or couldn't be changed",
-// 		});
+		const patchResult = await dutiesRepository.updateById(dutyId, patchedDuty);
 
-// 	res.status(200).json({
-// 		message: `new duty:${JSON.stringify(validatedDuty)}`,
-// 	});
-// });
+		if (!patchResult.modifiedCount) {
+			req.log.warn({ dutyId }, "patch request failed. duty can't be changed.");
+
+			return res.status(404).json({
+				status: "error",
+				message: "duty couldn't be changed.",
+			});
+		}
+
+		req.log.info({ dutyId, patchedDuty }, "duty was patched successfully.");
+
+		const newDuty = await dutiesRepository.findById(dutyId);
+
+		return res.status(200).json(newDuty);
+	},
+);
 
 export default dutiesRouter;
