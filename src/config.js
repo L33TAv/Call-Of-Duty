@@ -5,6 +5,7 @@ const config = {
 			? "silent"
 			: process.env.LOG_LEVEL || "info",
 	mongoURI: process.env.MONGO_URI,
+	db: process.env.DB,
 };
 
 export default config;
