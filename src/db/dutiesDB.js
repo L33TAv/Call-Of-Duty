@@ -27,3 +27,10 @@ export async function findById(id = {}) {
 	return dutiesCollection().findOne({ _id: new ObjectId(id) });
 }
 
+export async function deleteById(id) {
+	return dutiesCollection().deleteOne({
+		_id: new ObjectId(id),
+		status: { $ne: "scheduled" },
+	});
+}
+
