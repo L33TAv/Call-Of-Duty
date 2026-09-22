@@ -499,4 +499,79 @@ describe("Test /duties endpoints", () => {
 			expect(response.body.issues).toContain("minRank must be below maxRank");
 		});
 	});
+
+	describe("Test GET /duties/:id endpoint", () => {
+		it("should return 200 when duty found", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).get(
+				`/duties/${dutyDocument._id.toString()}`,
+			);
+
+			expect(response.statusCode).toBe(200);
+
+			const {
+				createdAt,
+				updatedAt,
+				endTime,
+				startTime,
+				statusHistory,
+				_id,
+				...expectedFields
+			} = dutyDocument;
+
+			expect(response.body).toEqual({
+				...expectedFields,
+				_id: _id.toString(),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+				startTime: expect.any(String),
+				endTime: expect.any(String),
+				statusHistory: [{ status: "unscheduled", date: expect.any(String) }],
+			});
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			vi.spyOn(dutiesRepository, "findById").mockRejectedValue(
+				new MongoNetworkError("failed to connect to server on first connect"),
+			);
+
+			const response = await request(app).get(
+				`/duties/${dutyDocument._id.toString()}`,
+			);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 400 when the id isn't valid - not a  BSON data type", async () => {
+			const response = await request(app).get(`/duties/1234567`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 404 when duty not found", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).get(
+				`/duties/${new ObjectId().toString()}`,
+			);
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("duty was not found.");
+		});
+	});
+
 });
