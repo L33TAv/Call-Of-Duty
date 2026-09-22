@@ -6,6 +6,8 @@ import {
 	dutySchema,
 	getDutySchema,
 	objectIdSchema,
+	patchDutySchema,
+	patchTimeOrRankSchema,
 } from "../schemas/duties.js";
 
 const dutiesRouter = express.Router();
@@ -84,5 +86,66 @@ dutiesRouter.delete(
 	},
 );
 
+dutiesRouter.patch(
+	"/:id",
+	validate({ params: objectIdSchema, body: patchDutySchema }),
+	async (req, res, next) => {
+		const dutyId = req.validatedParams.id;
+		const patchedDuty = req.validatedBody;
+
+		const dutyFound = await dutiesRepository.findById(dutyId);
+
+		if (!dutyFound) {
+			req.log.warn({ dutyId }, "patch request failed. duty wasn't found.");
+
+			return res.status(404).json({
+				status: "error",
+				message: "duty wasn't found.",
+			});
+		}
+
+		if (dutyFound.status === "scheduled") {
+			req.log.warn({ dutyId }, "patch request failed. duty was scheduled.");
+
+			return res
+				.status(409)
+				.json({ status: "error", message: "scheduled duty can't be changed." });
+		}
+
+		const mergedData = {
+			startTime: dutyFound.startTime,
+			endTime: dutyFound.endTime,
+			minRank: dutyFound.minRank,
+			maxRank: dutyFound.maxRank,
+			...patchedDuty,
+		};
+
+		const additionalValidation = patchTimeOrRankSchema.safeParse(mergedData);
+
+		if (!additionalValidation.success) {
+			req.log.warn(
+				{ dutyId, errors: additionalValidation.error.issues },
+				"cross-field validation failed.",
+			);
+
+			return next(additionalValidation.error);
+		}
+
+		const updatedDuty = await dutiesRepository.updateById(dutyId, patchedDuty);
+
+		if (!updatedDuty) {
+			req.log.warn({ dutyId }, "patch request failed. duty can't be changed.");
+
+			return res.status(404).json({
+				status: "error",
+				message: "duty couldn't be changed.",
+			});
+		}
+
+		req.log.info({ dutyId, updatedDuty }, "duty was patched successfully.");
+
+		return res.status(200).json(updatedDuty);
+	},
+);
 
 export default dutiesRouter;
