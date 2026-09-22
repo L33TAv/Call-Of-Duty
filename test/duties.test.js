@@ -574,4 +574,68 @@ describe("Test /duties endpoints", () => {
 		});
 	});
 
+	describe("Test DELETE /duties/:id endpoint", () => {
+		it("should return 204 when duty was deleted", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			const dutyInDB = await dutiesRepository
+				.dutiesCollection()
+				.findOne({ _id: id });
+
+			expect(response.statusCode).toBe(204);
+			expect(dutyInDB).toBe(null);
+		});
+
+		it("should return 503 when fails connect to DB", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			vi.spyOn(dutiesRepository, "deleteById").mockRejectedValue(
+				new MongoNetworkError("failed to connect to server on first connect"),
+			);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			expect(response.statusCode).toBe(503);
+			expect(response.body.status).toBe("error");
+			expect(response.body.message).toContain("database error");
+		});
+
+		it("should return 404 when duty was not found", async () => {
+			const response = await request(app).delete(`/duties/${new ObjectId()}`);
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toContain("duty wasn't found.");
+			expect(response.body.status).toBe("error");
+		});
+
+		it("should return 400 when the id isn't valid - not a  BSON data type", async () => {
+			const response = await request(app).delete(`/duties/1234567`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.issues).toContain("id");
+		});
+
+		it("should return 409 when duty is scheduled", async () => {
+			const id = new ObjectId();
+			const dutyDocument = createDutyDocument({ _id: id, status: "scheduled" });
+
+			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+
+			const response = await request(app).delete(`/duties/${id}`);
+
+			expect(response.statusCode).toBe(409);
+			expect(response.body.message).toContain(
+				"scheduled duty can't be deleted.",
+			);
+		});
+	});
+
 });
