@@ -126,9 +126,75 @@ const getDutySchema = baseDutySchema
 	.refine((data) => Object.keys(data).length > 0, {
 		message: "At least one filter must be provided",
 	});
+
+const patchDutySchema = z
+	.object({
+		name: z.string().min(3).max(50).optional(),
+		description: z.string().min(1).max(100).optional(),
+		location: GeoJsonPointSchema.optional(),
+		startTime: z.coerce
+			.date()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "Start time must be in the future",
+			})
+			.optional(),
+		endTime: z.coerce
+			.date()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "End time must be in the future",
+			})
+			.optional(),
+		constraints: constraintsSchema.optional(),
+		soldiersRequired: z.coerce.number().positive().optional(),
+		value: z.coerce.number().positive().optional(),
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+	})
+	.strict()
+	.refine(
+		(data) => {
+			if (data.startTime && data.endTime) return data.startTime < data.endTime;
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	)
+	.refine((data) => Object.keys(data).length > 0, {
+		message: "At least one property must be provided",
+	})
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	});
+
+const patchTimeOrRankSchema = z
+	.object({
+		startTime: z.coerce.date(),
+		endTime: z.coerce.date(),
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+	})
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	})
+	.refine(
+		(data) => {
+			if (data.startTime && data.endTime)
+				return new Date(data.startTime) < new Date(data.endTime);
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	);
+
 export {
 	dutySchema,
 	GeoJsonPointSchema,
 	getDutySchema,
 	objectIdSchema,
+	patchDutySchema,
+	patchTimeOrRankSchema,
 };
