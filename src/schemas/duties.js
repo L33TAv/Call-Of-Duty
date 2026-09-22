@@ -68,8 +68,67 @@ const dutySchema = baseDutySchema
 		path: ["endTime"],
 	})
 	.refine((data) => rankRefine(data));
+
+const getDutySchema = baseDutySchema
+	.omit({ location: true })
+	.partial()
+	.extend({
+		location: z
+			.string()
+			.transform((val) => {
+				const items = val
+					.split(",")
+					.filter((item) => item.trim() !== "")
+					.map(Number);
+				return items.length > 0 ? items : undefined;
+			})
+			.transform((val) => ({ type: "Point", coordinates: val }))
+			.pipe(GeoJsonPointSchema)
+			.optional(),
+
+		constraints: z
+			.string()
+			.transform((val) => {
+				const items = val.split(",").filter((item) => item.trim() !== "");
+				return items.length > 0 ? items : undefined;
+			})
+			.pipe(constraintsSchema)
+			.optional(),
+
+		startTime: z.coerce
+			.date()
+			.refine((val) => new Date(val) > new Date(), {
+				message: "Start time must be in the future",
+			})
+			.optional(),
+
+		minRank: z.coerce.number().min(0).max(6).optional(),
+		maxRank: z.coerce.number().min(0).max(6).optional(),
+		soldiersRequired: z.coerce.number().positive().optional(),
+		value: z.coerce.number().positive().optional(),
+
+		status: z.enum(["unscheduled", "scheduled", "canceled"]).optional(),
+	})
+	.refine(
+		(data) => {
+			if (data.startTime !== undefined && data.endTime !== undefined)
+				return data.startTime < data.endTime;
+			return true;
+		},
+		{
+			message: "End time must be after the start time",
+			path: ["endTime"],
+		},
+	)
+	.refine((data) => rankRefine(data), {
+		message: "minRank must be below maxRank",
+	})
+	.refine((data) => Object.keys(data).length > 0, {
+		message: "At least one filter must be provided",
+	});
 export {
 	dutySchema,
 	GeoJsonPointSchema,
+	getDutySchema,
 	objectIdSchema,
 };

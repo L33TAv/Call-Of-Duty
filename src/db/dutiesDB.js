@@ -14,3 +14,12 @@ export async function insertOne(duty) {
 	return dutiesCollection().insertOne(duty);
 }
 
+export async function find(filter = {}) {
+	const mongoFilter = { ...filter };
+
+	if (mongoFilter.constraints)
+		mongoFilter.constraints = { $all: mongoFilter.constraints };
+
+	return dutiesCollection().find(mongoFilter).toArray();
+}
+
