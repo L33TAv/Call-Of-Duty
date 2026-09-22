@@ -23,3 +23,7 @@ export async function find(filter = {}) {
 	return dutiesCollection().find(mongoFilter).toArray();
 }
 
+export async function findById(id = {}) {
+	return dutiesCollection().findOne({ _id: new ObjectId(id) });
+}
+

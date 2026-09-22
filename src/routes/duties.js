@@ -5,6 +5,7 @@ import { validate } from "../middleware/validate.js";
 import {
 	dutySchema,
 	getDutySchema,
+	objectIdSchema,
 } from "../schemas/duties.js";
 
 const dutiesRouter = express.Router();
@@ -28,5 +29,28 @@ dutiesRouter.get("/", validate({ query: getDutySchema }), async (req, res) => {
 
 	return res.status(200).json(dutiesInDb);
 });
+
+dutiesRouter.get(
+	"/:id",
+	validate({ params: objectIdSchema }),
+	async (req, res) => {
+		const dutyId = req.validatedParams.id;
+
+		const dutyFound = await dutiesRepository.findById(dutyId);
+
+		if (!dutyFound) {
+			req.log.warn({ dutyId }, "request failed. duty id wasn't found.");
+
+			return res
+				.status(404)
+				.json({ status: "error", message: "duty was not found." });
+		}
+
+		req.log.info({ dutyFound }, "duty found successfully.");
+
+		return res.status(200).json(dutyFound);
+	},
+);
+
 
 export default dutiesRouter;
