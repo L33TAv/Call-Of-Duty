@@ -34,3 +34,12 @@ export async function deleteById(id) {
 	});
 }
 
+export async function updateById(id, updatedProperties) {
+	updatedProperties.updatedAt = new Date();
+
+	return dutiesCollection().findOneAndUpdate(
+		{ _id: new ObjectId(id), status: { $ne: "scheduled" } },
+		{ $set: updatedProperties },
+		{ returnDocument: "after" },
+	);
+}
