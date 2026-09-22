@@ -52,5 +52,37 @@ dutiesRouter.get(
 	},
 );
 
+dutiesRouter.delete(
+	"/:id",
+	validate({ params: objectIdSchema }),
+	async (req, res) => {
+		const dutyId = req.validatedParams.id;
+
+		const deleteResponse = await dutiesRepository.deleteById(dutyId);
+
+		if (deleteResponse.deletedCount) {
+			req.log.info({ dutyId }, "duty deleted successfully.");
+
+			return res.sendStatus(204);
+		}
+
+		const existingDuty = await dutiesRepository.findById(dutyId);
+
+		if (existingDuty?.status === "scheduled") {
+			req.log.warn({ dutyId }, "delete request failed. duty was scheduled.");
+
+			return res
+				.status(409)
+				.json({ status: "error", message: "scheduled duty can't be deleted." });
+		}
+
+		req.log.warn({ dutyId }, "request failed. duty id wasn't found.");
+
+		return res
+			.status(404)
+			.json({ status: "error", message: "duty wasn't found." });
+	},
+);
+
 
 export default dutiesRouter;
