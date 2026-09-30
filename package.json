@@ -9,7 +9,7 @@
 		"coverage": "vitest run --coverage",
 		"lint": "biome check . --fix",
 		"dev": "node --watch --env-file=.env src/server.js | pino-pretty",
-		"start": "node --watch --env-file=.env src/server.js"
+		"start": "node --env-file=.env src/server.js"
 	},
 	"keywords": [],
 	"author": "",
@@ -17,7 +17,8 @@
 	"dependencies": {
 		"express": "^5.0.0",
 		"mongodb": "^7.4.0",
-		"pino": "^10.3.1"
+		"pino": "^10.3.1",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.1",

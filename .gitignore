@@ -5,3 +5,5 @@ skills-lock.json
 coverage/
 info
 silent
+playground/
+.env.test
