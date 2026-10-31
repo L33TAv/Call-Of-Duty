@@ -3,6 +3,7 @@ import { getClient } from "./db/client.js";
 import errorHandler from "./middleware/errorHandler.js";
 import { logger, loggerMiddleware } from "./middleware/logger.js";
 import { requestId } from "./middleware/requestId.js";
+import dutiesRouter from "./routes/duties.js";
 import soldiersRouter from "./routes/soldiers.js";
 
 export function createApp() {
@@ -20,6 +21,8 @@ export function createApp() {
 	app.use(loggerMiddleware);
 
 	app.use("/soldiers", soldiersRouter);
+
+	app.use("/duties", dutiesRouter);
 
 	app.get("/health", (_req, res) => {
 		return res.status(200).json({ status: "ok" });
