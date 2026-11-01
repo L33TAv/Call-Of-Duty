@@ -16,7 +16,7 @@ export async function findById(id) {
 }
 
 export async function find(filter = {}) {
-	const { limitations, rankValue, rankName, ...rest } = filter;
+	const { limitations, rankValue, rankName, page, limit, ...rest } = filter;
 
 	const mongoFilter = {
 		...rest,
@@ -27,7 +27,11 @@ export async function find(filter = {}) {
 		...(rankName !== undefined ? { "rank.name": rankName } : {}),
 	};
 
-	return soldiersCollection().find(mongoFilter).toArray();
+	return soldiersCollection()
+		.find(mongoFilter)
+		.skip((page - 1) * limit)
+		.limit(limit)
+		.toArray();
 }
 
 export async function deleteById(id) {

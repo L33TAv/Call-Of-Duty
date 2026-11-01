@@ -70,6 +70,9 @@ const soldierQuerySchema = baseSoldierObject
 	.omit({ _id: true })
 	.partial()
 	.extend({
+		page: z.coerce.number().int().positive().default(1),
+		limit: z.coerce.number().int().positive().max(100).default(10),
+
 		limitations: z
 			.string()
 			.transform((val) => {
@@ -91,10 +94,7 @@ const soldierQuerySchema = baseSoldierObject
 		{
 			message: "rank doesn't match the requirements.",
 		},
-	)
-	.refine((data) => Object.keys(data).length > 0, {
-		message: "At least one filter must be provided",
-	});
+	);
 
 const soldierPatchSchema = baseSoldierObject
 	.omit({ _id: true })
