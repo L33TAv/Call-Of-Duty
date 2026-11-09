@@ -15,12 +15,15 @@ export async function insertOne(duty) {
 }
 
 export async function find(filter = {}) {
-	const mongoFilter = { ...filter };
-
+	const {page,limit,...mongoFilter} = { ...filter };
+    
 	if (mongoFilter.constraints)
 		mongoFilter.constraints = { $all: mongoFilter.constraints };
 
-	return dutiesCollection().find(mongoFilter).toArray();
+	return dutiesCollection().find(mongoFilter)
+		.skip((page - 1) * limit)
+		.limit(limit)
+		.toArray();
 }
 
 export async function findById(id) {

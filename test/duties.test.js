@@ -326,19 +326,34 @@ describe("Test /duties endpoints", () => {
 			expect(response.body.status).toBe("error");
 		});
 
-		it("should return 400 when no search query is given", async () => {
+		it("should return 200 when no search query is given", async () => {
 			const dutyDocument = createDutyDocument();
+			const dutyDocument2 = createDutyDocument();
+			const dutyDocument3 = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertOne(dutyDocument);
+			await dutiesRepository.dutiesCollection().insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
 
 			const response = await request(app).get(`/duties`);
 
-			expect(response.statusCode).toBe(400);
+			expect(response.statusCode).toBe(200);
 
-			expect(response.body.issues).toContain(
-				"At least one filter must be provided",
-			);
+			expect(response.body.length).toBe(3);
 		});
+
+		it("should return 200 when no search query is given -  with page / limit", async () => {
+			const dutyDocument = createDutyDocument();
+			const dutyDocument2 = createDutyDocument();
+			const dutyDocument3 = createDutyDocument();
+
+			await dutiesRepository.dutiesCollection().insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
+
+			const response = await request(app).get(`/duties?page=1&limit=2`);
+
+			expect(response.statusCode).toBe(200);
+
+			expect(response.body.length).toBe(2);
+		});
+
 
 		it("should return 400 when search using unknown property", async () => {
 			const response = await request(app).get(`/duties?unkwownProperty=3`);

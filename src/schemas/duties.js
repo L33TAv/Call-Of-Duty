@@ -73,6 +73,8 @@ const getDutySchema = baseDutySchema
 	.omit({ location: true })
 	.partial()
 	.extend({
+		page: z.coerce.number().int().positive().default(1),
+		limit: z.coerce.number().int().positive().max(100).default(10),
 		location: z
 			.string()
 			.transform((val) => {
@@ -122,9 +124,6 @@ const getDutySchema = baseDutySchema
 	)
 	.refine((data) => rankRefine(data), {
 		message: "minRank must be below maxRank",
-	})
-	.refine((data) => Object.keys(data).length > 0, {
-		message: "At least one filter must be provided",
 	});
 
 const patchDutySchema = z
