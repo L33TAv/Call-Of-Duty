@@ -39,7 +39,7 @@ const constraintsSchema = z
 
 const baseDutySchema = z
 	.object({
-		name: z.string().min(3).max(50),
+		name: z.string().trim().min(3).max(50),
 		description: z.string().min(1).max(100),
 		location: GeoJsonPointSchema,
 		startTime: z.coerce.date().refine((val) => val > new Date(), {
@@ -73,6 +73,7 @@ const getDutySchema = baseDutySchema
 	.omit({ location: true })
 	.partial()
 	.extend({
+		name: z.string().trim().min(1).max(50).optional(),
 		page: z.coerce.number().int().positive().default(1),
 		limit: z.coerce.number().int().positive().max(100).default(10),
 		location: z

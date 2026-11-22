@@ -16,10 +16,14 @@ export async function findById(id) {
 }
 
 export async function find(filter = {}) {
-	const { limitations, rankValue, rankName, page, limit, ...rest } = filter;
+	const { name, limitations, rankValue, rankName, page, limit, ...rest } =
+		filter;
+
+	const filteredName = name?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 	const mongoFilter = {
 		...rest,
+		...(filteredName !== undefined ? { name: { $regex: filteredName, $options: "i" } } : {}),
 		...(limitations !== undefined
 			? { limitations: { $all: limitations } }
 			: {}),

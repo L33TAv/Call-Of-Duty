@@ -331,7 +331,9 @@ describe("Test /duties endpoints", () => {
 			const dutyDocument2 = createDutyDocument();
 			const dutyDocument3 = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
+			await dutiesRepository
+				.dutiesCollection()
+				.insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
 
 			const response = await request(app).get(`/duties`);
 
@@ -345,7 +347,9 @@ describe("Test /duties endpoints", () => {
 			const dutyDocument2 = createDutyDocument();
 			const dutyDocument3 = createDutyDocument();
 
-			await dutiesRepository.dutiesCollection().insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
+			await dutiesRepository
+				.dutiesCollection()
+				.insertMany([dutyDocument, dutyDocument2, dutyDocument3]);
 
 			const response = await request(app).get(`/duties?page=1&limit=2`);
 
@@ -353,7 +357,6 @@ describe("Test /duties endpoints", () => {
 
 			expect(response.body.length).toBe(2);
 		});
-
 
 		it("should return 400 when search using unknown property", async () => {
 			const response = await request(app).get(`/duties?unkwownProperty=3`);
@@ -363,8 +366,8 @@ describe("Test /duties endpoints", () => {
 			expect(response.body.issues).toContain("unkwownProperty");
 		});
 
-		it("should return 400 when search using invalid name", async () => {
-			const response = await request(app).get(`/duties?name=a`);
+		it("should return 400 when search using empty name", async () => {
+			const response = await request(app).get(`/duties?name=`);
 
 			expect(response.statusCode).toBe(400);
 

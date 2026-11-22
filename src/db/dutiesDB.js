@@ -15,12 +15,19 @@ export async function insertOne(duty) {
 }
 
 export async function find(filter = {}) {
-	const {page,limit,...mongoFilter} = { ...filter };
-    
+	const { name, page, limit, ...mongoFilter } = { ...filter };
+
 	if (mongoFilter.constraints)
 		mongoFilter.constraints = { $all: mongoFilter.constraints };
 
-	return dutiesCollection().find(mongoFilter)
+	const filteredName = name?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+	if (filteredName) {
+		mongoFilter.name = { $regex: filteredName, $options: "i" };
+	}
+
+	return dutiesCollection()
+		.find(mongoFilter)
 		.skip((page - 1) * limit)
 		.limit(limit)
 		.toArray();
