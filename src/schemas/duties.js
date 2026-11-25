@@ -76,6 +76,26 @@ const getDutySchema = baseDutySchema
 		name: z.string().trim().min(1).max(50).optional(),
 		page: z.coerce.number().int().positive().default(1),
 		limit: z.coerce.number().int().positive().max(100).default(10),
+		sortBy: z
+			.enum([
+				"_id",
+				"name",
+				"description",
+				"location.coordinates",
+				"startTime",
+				"endTime",
+				"minRank",
+				"maxRank",
+				"value",
+				"soldiersRequired",
+				"constraints",
+				"status",
+				"updatedAt",
+				"createdAt",
+			])
+			.optional(),
+		sortOrder: z.enum(["asc", "desc"]).default("asc"),
+
 		location: z
 			.string()
 			.transform((val) => {

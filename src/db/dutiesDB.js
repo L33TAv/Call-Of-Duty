@@ -15,7 +15,9 @@ export async function insertOne(duty) {
 }
 
 export async function find(filter = {}) {
-	const { name, page, limit, ...mongoFilter } = { ...filter };
+	const { name, page, limit, sortBy, sortOrder, ...mongoFilter } = {
+		...filter,
+	};
 
 	if (mongoFilter.constraints)
 		mongoFilter.constraints = { $all: mongoFilter.constraints };
@@ -26,8 +28,19 @@ export async function find(filter = {}) {
 		mongoFilter.name = { $regex: filteredName, $options: "i" };
 	}
 
+	const sort = {};
+
+	if (sortBy) {
+		sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+	}
+
+	if (sortBy !== "_id") {
+		sort._id = 1;
+	}
+
 	return dutiesCollection()
-		.find(mongoFilter)
+		.find(mongoFilter, { collation: { locale: "en", strength: 2 } })
+		.sort(sort)
 		.skip((page - 1) * limit)
 		.limit(limit)
 		.toArray();
