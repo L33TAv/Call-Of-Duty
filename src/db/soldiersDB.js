@@ -16,10 +16,25 @@ export async function findById(id) {
 }
 
 export async function find(filter = {}) {
-	const { limitations, rankValue, rankName, ...rest } = filter;
+	const {
+		name,
+		limitations,
+		rankValue,
+		sortBy,
+		sortOrder,
+		rankName,
+		page,
+		limit,
+		...rest
+	} = filter;
+
+	const filteredName = name?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 	const mongoFilter = {
 		...rest,
+		...(filteredName !== undefined
+			? { name: { $regex: filteredName, $options: "i" } }
+			: {}),
 		...(limitations !== undefined
 			? { limitations: { $all: limitations } }
 			: {}),
@@ -27,7 +42,22 @@ export async function find(filter = {}) {
 		...(rankName !== undefined ? { "rank.name": rankName } : {}),
 	};
 
-	return soldiersCollection().find(mongoFilter).toArray();
+	const sort = {};
+
+	if (sortBy) {
+		sort[sortBy] = sortOrder === "desc" ? -1 : 1;
+	}
+
+	if (sortBy !== "_id") {
+		sort._id = 1;
+	}
+
+	return soldiersCollection()
+		.find(mongoFilter, { collation: { locale: "en", strength: 2 } })
+		.sort(sort)
+		.skip((page - 1) * limit)
+		.limit(limit)
+		.toArray();
 }
 
 export async function deleteById(id) {

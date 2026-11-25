@@ -70,6 +70,14 @@ const soldierQuerySchema = baseSoldierObject
 	.omit({ _id: true })
 	.partial()
 	.extend({
+		name: z.string().trim().min(1).max(50).optional(),
+		page: z.coerce.number().int().positive().default(1),
+		limit: z.coerce.number().int().positive().max(100).default(10),
+		sortBy: z
+			.enum(["_id", "name", "rank.name", "createdAt", "updatedAt"])
+			.optional(),
+		sortOrder: z.enum(["asc", "desc"]).default("asc"),
+
 		limitations: z
 			.string()
 			.transform((val) => {
@@ -91,10 +99,7 @@ const soldierQuerySchema = baseSoldierObject
 		{
 			message: "rank doesn't match the requirements.",
 		},
-	)
-	.refine((data) => Object.keys(data).length > 0, {
-		message: "At least one filter must be provided",
-	});
+	);
 
 const soldierPatchSchema = baseSoldierObject
 	.omit({ _id: true })
